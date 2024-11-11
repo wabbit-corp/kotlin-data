@@ -5,6 +5,8 @@ val DEV: String by project
 
 repositories {
     mavenCentral()
+
+    maven("https://jitpack.io")
 }
 
 group   = "one.wabbit"
@@ -14,14 +16,23 @@ plugins {
     kotlin("jvm") version "2.0.20"
 
     kotlin("plugin.serialization") version "2.0.20"
+
+    id("maven-publish")
+}
+
+publishing {
+  publications {
+    create<MavenPublication>("maven") {
+      groupId = "one.wabbit"
+      artifactId = "kotlin-data"
+      version = "1.0.0"
+      from(components["java"])
+    }
+  }
 }
 
 dependencies {
-    if (DEV == "true") {
-        implementation(project(":kotlin-data-need"))
-    } else {
-        implementation("one.wabbit:kotlin-data-need:1.0.0")
-    }
+    implementation("com.github.wabbit-corp:kotlin-data-need:1.0.0")
 
     testImplementation(kotlin("test"))
 
