@@ -149,7 +149,7 @@ sealed class ConsList<out V> : List<V> {
         var current = this
         while (true) {
             if (current !is Cons<V>)
-                throw IndexOutOfBoundsException(index)
+                throw IndexOutOfBoundsException("index: $index, size: $size")
             if (i == index) return current.head
             current = current.tail
             i += 1
@@ -161,7 +161,7 @@ sealed class ConsList<out V> : List<V> {
         if (index >= size) throw IndexOutOfBoundsException("index: $index, size: $size")
 
         fun go(list: ConsList<V>, i: Int): ConsList<V> = when (list) {
-            is Nil -> throw IndexOutOfBoundsException(index)
+            is Nil -> throw IndexOutOfBoundsException("index: $index, size: $size")
             is Cons -> if (i == index) Cons(element, list.tail) else Cons(list.head, go(list.tail, i + 1))
         }
 
