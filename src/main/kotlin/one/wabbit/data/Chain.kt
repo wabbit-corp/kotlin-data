@@ -1,7 +1,14 @@
 package one.wabbit.data
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlin.math.max
 
+@Serializable(with = Chain.TypeSerializer::class)
 class Chain<out A>(private val value: Any?, val length: Int, private val depth: Int) {
     private object Empty
     private class Concat(val left: Any?, val right: Any?)
@@ -43,6 +50,17 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
         val out = ArrayList<A>(length)
         unsafeAppendToH(this.value, rights) { _, value -> out.add(value as A) }
         return out
+    }
+
+    class TypeSerializer<E>(val elementSerializer: KSerializer<E>) : KSerializer<Chain<E>> {
+        private val listSerializer = ListSerializer(elementSerializer)
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        override fun serialize(encoder: Encoder, value: Chain<E>) {
+            listSerializer.serialize(encoder, value.toList())
+        }
+        override fun deserialize(decoder: Decoder): Chain<E> {
+            return Chain.fromList(listSerializer.deserialize(decoder))
+        }
     }
 
     companion object {

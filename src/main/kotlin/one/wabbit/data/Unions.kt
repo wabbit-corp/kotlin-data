@@ -14,6 +14,26 @@ import kotlinx.serialization.Serializable
         is U1 -> U1(value)
         is U2 -> U2(f(value))
     }
+
+    fun firstOrNone(): Option<A> = when (this) {
+        is U1 -> Some(value)
+        is U2 -> None
+    }
+
+    fun firstOrNull(): A? = when (this) {
+        is U1 -> value
+        is U2 -> null
+    }
+
+    fun secondOrNone(): Option<B> = when (this) {
+        is U1 -> None
+        is U2 -> Some(value)
+    }
+
+    fun secondOrNull(): B? = when (this) {
+        is U1 -> null
+        is U2 -> value
+    }
 }
 
 @Serializable sealed interface Union3<out A, out B, out C> {

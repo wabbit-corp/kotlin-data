@@ -90,15 +90,24 @@ class DoubleBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: DoubleBuf) : kotlin.collections.Iterator<Double> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Double = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<DoubleBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Double.serializer()).descriptor
+        private val listSerializer = ListSerializer(Double.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: DoubleBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Double.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): DoubleBuf {
-            return DoubleBuf(decoder.decodeSerializableValue(ListSerializer(Double.serializer())).toDoubleArray())
+            return DoubleBuf(decoder.decodeSerializableValue(listSerializer).toDoubleArray())
         }
     }
 }

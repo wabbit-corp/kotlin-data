@@ -50,9 +50,9 @@ sealed class ConsList<out V> : List<V> {
         return list
     }
 
-    fun toLazy(): LazyConsList<V> = when (this) {
-        is Nil -> LazyConsList.Nil
-        is Cons -> LazyConsList.Delay(Need.apply { LazyConsList.Cons(head, tail.toLazy()) })
+    fun toLazy(): LazyList<V> = when (this) {
+        is Nil -> LazyList.Nil
+        is Cons -> LazyList.Delay(Need.apply { LazyList.Cons(head, tail.toLazy()) })
     }
 
     fun reverse(): ConsList<V> {
@@ -65,7 +65,7 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    fun reverseLazy(): LazyConsList<V> {
+    fun reverseLazy(): LazyList<V> {
         // rev' :: StrictList a -> [a]
         // rev' = go []
         //   where
@@ -73,10 +73,10 @@ sealed class ConsList<out V> : List<V> {
         //     go acc SNil         = acc
         //     go acc (SCons x xs) = go (x:acc) xs
 
-        var result: LazyConsList<V> = LazyConsList.Nil
+        var result: LazyList<V> = LazyList.Nil
         var tail = this
         while (tail is Cons) {
-            result = LazyConsList.Cons(tail.head, result)
+            result = LazyList.Cons(tail.head, result)
             tail = tail.tail
         }
         return result

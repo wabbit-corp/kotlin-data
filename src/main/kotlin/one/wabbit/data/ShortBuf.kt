@@ -90,15 +90,24 @@ class ShortBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: ShortBuf) : kotlin.collections.Iterator<Short> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Short = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<ShortBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Short.serializer()).descriptor
+        private val listSerializer = ListSerializer(Short.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: ShortBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Short.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): ShortBuf {
-            return ShortBuf(decoder.decodeSerializableValue(ListSerializer(Short.serializer())).toShortArray())
+            return ShortBuf(decoder.decodeSerializableValue(listSerializer).toShortArray())
         }
     }
 }

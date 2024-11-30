@@ -9,6 +9,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.math.max
 
+
+@Serializable(with = Cord.TypeSerializer::class)
 class Cord(private val value: Any, val length: Int, private val depth: Int) {
     private class Concat(val left: Any, val right: Any)
     // Cord = (String | Concat, Int)
@@ -44,6 +46,17 @@ class Cord(private val value: Any, val length: Int, private val depth: Int) {
         unsafeAppendToH(rights, out, this.value)
         return String(out)
     }
+
+    internal class TypeSerializer : KSerializer<Cord> {
+        override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Cord", PrimitiveKind.STRING)
+        override fun serialize(encoder: Encoder, value: Cord) {
+            encoder.encodeString(value.toString())
+        }
+        override fun deserialize(decoder: Decoder): Cord {
+            return Cord.of(decoder.decodeString())
+        }
+    }
+
 
     companion object {
         val empty: Cord = Cord("", 0, 1)

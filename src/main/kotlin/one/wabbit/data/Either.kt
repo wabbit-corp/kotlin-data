@@ -8,8 +8,7 @@ data class Left<out E>(val value: E) : Either<E, Nothing>
 @Serializable @SerialName("Right")
 data class Right<out A>(val value: A) : Either<Nothing, A>
 
-@Serializable
-sealed interface Either<out E, out A> {
+@Serializable sealed interface Either<out E, out A> {
     fun <B> map(f: (A) -> B): Either<E, B> =
         when (this) {
             is Left -> this

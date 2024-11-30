@@ -90,15 +90,24 @@ class LongBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: LongBuf) : kotlin.collections.Iterator<Long> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Long = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<LongBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Long.serializer()).descriptor
+        private val listSerializer = ListSerializer(Long.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: LongBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Long.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): LongBuf {
-            return LongBuf(decoder.decodeSerializableValue(ListSerializer(Long.serializer())).toLongArray())
+            return LongBuf(decoder.decodeSerializableValue(listSerializer).toLongArray())
         }
     }
 }

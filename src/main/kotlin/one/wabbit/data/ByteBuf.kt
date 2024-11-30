@@ -90,15 +90,24 @@ class ByteBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: ByteBuf) : kotlin.collections.Iterator<Byte> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Byte = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<ByteBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Byte.serializer()).descriptor
+        private val listSerializer = ListSerializer(Byte.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: ByteBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Byte.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): ByteBuf {
-            return ByteBuf(decoder.decodeSerializableValue(ListSerializer(Byte.serializer())).toByteArray())
+            return ByteBuf(decoder.decodeSerializableValue(listSerializer).toByteArray())
         }
     }
 }

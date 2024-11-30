@@ -90,15 +90,24 @@ class CharBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: CharBuf) : kotlin.collections.Iterator<Char> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Char = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<CharBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Char.serializer()).descriptor
+        private val listSerializer = ListSerializer(Char.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: CharBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Char.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): CharBuf {
-            return CharBuf(decoder.decodeSerializableValue(ListSerializer(Char.serializer())).toCharArray())
+            return CharBuf(decoder.decodeSerializableValue(listSerializer).toCharArray())
         }
     }
 }

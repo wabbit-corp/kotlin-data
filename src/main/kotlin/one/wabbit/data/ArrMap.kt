@@ -1,6 +1,12 @@
 package one.wabbit.data
 
-//@Serializable(with=ArrMap.TypeSerializer::class)
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+@Serializable(with=ArrMap.TypeSerializer::class)
 class ArrMap<K : Any, V>(
     @JvmField val unsafe: Array<Any?>,
     @JvmField val hashes: IntArray
@@ -88,6 +94,20 @@ class ArrMap<K : Any, V>(
         newHashes[size] = keyHash
         return ArrMap(newArr, newHashes)
     }
+
+    fun toMutableMap(): MutableMap<K, V> {
+        val unsafe = unsafe
+        val size = unsafe.size
+        val result = mutableMapOf<K, V>()
+        var i = 0
+        while (i < size) {
+            result[unsafe[i] as K] = unsafe[i + 1] as V
+            i += 2
+        }
+        return result
+    }
+
+    fun toMap(): Map<K, V> = toMutableMap()
 
 //    fun remove(key: K): ArrMap<K, V> {
 //        val unsafe = unsafe
@@ -218,42 +238,38 @@ class ArrMap<K : Any, V>(
         return false
     }
 
-//    class TypeSerializer<K, V>(val keySerializer: KSerializer<K>, val valueSerializer: KSerializer<V>) : KSerializer<ArrMap<K, V>> {
-//        override val descriptor = MapSerializer(keySerializer, valueSerializer).descriptor
-//        override fun serialize(encoder: Encoder, value: ArrMap<K, V>) {
-//            val map = value.unsafe
-//            val size = map.size / 2
-//            encoder.beginStructure(descriptor).apply {
-//                for (i in 0 until size) {
-//                    encodeSerializableElement(descriptor, i, keySerializer, map[2 * i] as K)
-//                    encodeSerializableElement(descriptor, i + size, valueSerializer, map[2 * i + 1] as V)
-//                }
-//                endStructure(descriptor)
-//            }
-//        }
-//
-//        override fun deserialize(decoder: Decoder): ArrMap<K, V> {
-//            val map = mutableMapOf<K, V>()
-//            decoder.beginStructure(descriptor).apply {
-//                while (true) {
-//                    when (val index = decodeElementIndex(descriptor)) {
-//                        CompositeDecoder.DECODE_DONE -> break
-//                        else -> {
-//                            val key = decodeSerializableElement(descriptor, index, keySerializer)
-//                            val value = decodeSerializableElement(descriptor, index + descriptor.elementsCount, valueSerializer)
-//                            map[key] = value
-//                        }
-//                    }
-//                }
-//                endStructure(descriptor)
-//            }
-//            return ArrMap(map)
-//        }
-//    }
+    class TypeSerializer<K : Any, V>(val keySerializer: KSerializer<K>, val valueSerializer: KSerializer<V>) : KSerializer<ArrMap<K, V>> {
+        private val mapSerializer = MapSerializer(keySerializer, valueSerializer)
+        override val descriptor = mapSerializer.descriptor
+        override fun serialize(encoder: Encoder, value: ArrMap<K, V>) {
+            mapSerializer.serialize(encoder, value.toMap())
+        }
+
+        override fun deserialize(decoder: Decoder): ArrMap<K, V> {
+            return ArrMap.from<K, V>(mapSerializer.deserialize(decoder))
+        }
+    }
 
     companion object {
         private val EMPTY = ArrMap<Nothing, Nothing>(emptyArray(), intArrayOf())
         fun <K : Any, V> empty(): ArrMap<K, V> = EMPTY as ArrMap<K, V>
+
+        fun <K : Any, V> from(map: Map<K, V>): ArrMap<K, V> {
+            val size = map.size
+            if (size == 0) {
+                return empty<K, V>()
+            }
+            val unsafe = arrayOfNulls<Any?>(2 * size)
+            val hashes = IntArray(size)
+            var i = 0
+            for ((key, value) in map) {
+                unsafe[2 * i] = key
+                unsafe[2 * i + 1] = value
+                hashes[i] = key.hashCode()
+                i += 1
+            }
+            return ArrMap(unsafe, hashes)
+        }
     }
 }
 

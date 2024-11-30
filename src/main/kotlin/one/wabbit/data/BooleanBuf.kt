@@ -90,15 +90,24 @@ class BooleanBuf(var capacity: Int = 16) {
         buffer[index] = value
     }
 
+    class Iterator(private val buf: BooleanBuf) : kotlin.collections.Iterator<Boolean> {
+        private var index = 0
+        override fun hasNext(): Boolean = index < buf.size
+        override fun next(): Boolean = buf.buffer[index++]
+    }
+
+    operator fun iterator(): Iterator = Iterator(this)
+
     class TypeSerializer : KSerializer<BooleanBuf> {
-        override val descriptor: SerialDescriptor = ListSerializer(Boolean.serializer()).descriptor
+        private val listSerializer = ListSerializer(Boolean.serializer())
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: BooleanBuf) {
-            encoder.encodeSerializableValue(ListSerializer(Boolean.serializer()), value.toList())
+            encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
         override fun deserialize(decoder: Decoder): BooleanBuf {
-            return BooleanBuf(decoder.decodeSerializableValue(ListSerializer(Boolean.serializer())).toBooleanArray())
+            return BooleanBuf(decoder.decodeSerializableValue(listSerializer).toBooleanArray())
         }
     }
 }

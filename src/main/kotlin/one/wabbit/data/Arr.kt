@@ -8,7 +8,6 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-// : List<T>, Cloneable, java.io.Serializable, RandomAccess
 @Serializable(with=Arr.TypeSerializer::class)
 data class Arr<T>(@JvmField val unsafe: Array<Any?>)  {
     inline val size: Int
