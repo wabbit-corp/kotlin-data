@@ -1,10 +1,10 @@
 # kotlin-data
 
-The Kotlin Data project, named "kotlin-data", is designed to provide a suite of robust data structures and utilities, focusing on high-performance and functional programming paradigms using Kotlin.
+The Kotlin Data project, "kotlin-data", provides a collection of data structures and utilities for Kotlin. It focuses on performance and functional programming.
 
 ## Overview
 
-The Kotlin Data project combines innovative data structures with functional programming features, making it an excellent toolset for developers looking to enhance their projects with efficient, type-safe, and expressive Kotlin code. It includes data structures like enhanced arrays, maps, lazy lists, persistent queues, and more. It also provides functional types like `Either` and `Option`, along with various utility functions to support string manipulation, randomization, and set operations. The project utilizes code generation to ensure consistency and reduce redundancy.
+Kotlin Data includes various data structures like enhanced arrays, maps, lazy lists, and persistent queues. It also offers functional types like `Either` and `Option`, and utility functions for string manipulation, randomization, and set operations. The project uses code generation for consistency and to reduce redundancy.
 
 ## Installation
 
@@ -23,7 +23,7 @@ dependencies {
 ## Usage
 
 ### 1. `Arr.kt`
-**Purpose**: 
+**Purpose**:
 - A generic data class `Arr<T>` providing functionalities similar to a list with additional methods like `map`, `mapOrNull`, `all`, `any`, and more.
 - Includes serialization support.
 
