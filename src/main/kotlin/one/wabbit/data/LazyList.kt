@@ -16,12 +16,16 @@ sealed interface LazyList<out E> {
             operator fun <E> invoke(thunk: () -> LazyList<E>): Delay<E> =
                 Delay(Need.apply { thunk() }.flatMap { it.thunk })
         }
+
+        override fun toString(): String = toList().toString()
     }
     sealed class Strict<out E> : LazyList<E> {
         override val thunk: Need<Strict<E>> = Need.now(this)
     }
 
-    data object Nil : Strict<Nothing>()
+    data object Nil : Strict<Nothing>() {
+        override fun toString(): String = toList().toString()
+    }
 
     data class Cons<E>(val head: E, val tail: LazyList<E>) : Strict<E>() {
         companion object {
@@ -30,6 +34,8 @@ sealed interface LazyList<out E> {
             operator fun <E> invoke(head: E, tail: () -> LazyList<E>): Cons<E> =
                 Cons(head, Delay(tail))
         }
+
+        override fun toString(): String = toList().toString()
     }
 
     operator fun plus(other: LazyList<@UnsafeVariance E>): LazyList<E> =
@@ -67,6 +73,35 @@ sealed interface LazyList<out E> {
                     else it.tail.filter(f).thunk
             }
         })
+    }
+
+    operator fun get(n: Int): E {
+        var current = this
+        repeat(n) {
+            val strict = current.thunk.value
+            when (strict) {
+                is Nil -> throw IndexOutOfBoundsException("Index: $n")
+                is Cons -> current = strict.tail
+            }
+        }
+        val strict = current.thunk.value
+        return when (strict) {
+            is Nil -> throw IndexOutOfBoundsException("Index: $n")
+            is Cons -> strict.head
+        }
+    }
+
+    fun take(n: Int): LazyList<E> {
+        return if (n <= 0) {
+            Nil
+        } else {
+            Delay(this.thunk.flatMap {
+                when (it) {
+                    is Nil -> Need.now(Nil)
+                    is Cons -> Need.apply { Cons(it.head, it.tail.take(n - 1)) }
+                }
+            })
+        }
     }
 
     fun prepend(e: @UnsafeVariance E): LazyList<E> {
@@ -141,6 +176,12 @@ sealed interface LazyList<out E> {
             } else {
                 Nil
             }
+        }
+
+        fun <A> recursive(f: (LazyList<A>) -> LazyList<A>): LazyList<A> {
+            return Delay(Need.recursive<LazyList.Strict<A>> {
+                f(Delay(it)).thunk
+            })
         }
     }
 }
