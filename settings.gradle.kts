@@ -1,4 +1,4 @@
-rootProject.name = "kotlin-data"
+rootProject.name = "kotlin-data-need"
 
 dependencyResolutionManagement {
     repositories {
