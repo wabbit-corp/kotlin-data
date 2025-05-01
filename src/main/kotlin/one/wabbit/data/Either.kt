@@ -33,3 +33,12 @@ data class Right<out A>(val value: A) : Either<Nothing, A>
             is Right -> Left(value)
         }
 }
+
+fun <E, A : Any> Either<E, A>.rightOrNull(): A? = when (this) {
+    is Left -> null
+    is Right -> value
+}
+fun <E : Any, A> Either<E, A>.leftOrNull(): E? = when (this) {
+    is Left -> value
+    is Right -> null
+}
