@@ -135,65 +135,59 @@ fun <T, U> Iterator<T>.map(f: (T) -> U): Iterator<U> {
 }
 
 fun <T, U> Iterator<T>.flatMap(f: (T) -> Iterator<U>): Iterator<U> {
-    val self = this
-    return object: Iterator<U> {
-        var haveValue: Boolean = false
-        var value: T? = null
-        var it: Iterator<U>? = null
+    val upstream = this
+    return object : Iterator<U> {
+        private var current: Iterator<U>? = null
+        private var retry = false
+        private var pending: T? = null
 
-        override fun hasNext(): Boolean {
-            val it = this.it
-            if (it != null) return it.hasNext()
-            else {
-                if (haveValue) {
-                    val value = this.value
-                    val it = f(value as T)
-                    this.it = it
-                    this.value = null
-                    this.haveValue = false
-                    return it.hasNext()
+        // Ensure `current` points to a non-empty inner iterator, if one exists.
+        private fun advance(): Boolean {
+            while (true) {
+                // If current inner has data, we're good.
+                current?.let { if (it.hasNext()) return true }
+
+                // Drop exhausted inner.
+                current = null
+
+                // Choose the next T to expand.
+                val t: T = if (retry) {
+                    @Suppress("UNCHECKED_CAST")
+                    pending as T
                 } else {
-                    val value = self.next()
-                    val it = try {
-                        f(value)
-                    } catch (e: Throwable) {
-                        if (e is VirtualMachineError) throw e
-                        this.haveValue = true
-                        this.value = value
-                        throw e
-                    }
-                    this.it = it
-                    this.value = null
-                    return it.hasNext()
+                    if (!upstream.hasNext()) return false
+                    upstream.next()
                 }
+
+                // Try to create the new inner iterator.
+                val inner = try {
+                    f(t)
+                } catch (e: Throwable) {
+                    // Don’t mutate iterator state on fatal JVM errors.
+                    if (e is VirtualMachineError || e is Error) throw e
+                    retry = true
+                    pending = t
+                    throw e
+                }
+
+                // Mapping succeeded; clear retry state.
+                retry = false
+                pending = null
+
+                // If inner is empty, loop again; else set it and report readiness.
+                if (inner.hasNext()) {
+                    current = inner
+                    return true
+                }
+                // else loop to fetch next upstream T
             }
         }
+
+        override fun hasNext(): Boolean = advance()
+
         override fun next(): U {
-            val it = this.it
-            if (it != null) return it.next()
-            else {
-                if (haveValue) {
-                    val value = this.value
-                    val it = f(value as T)
-                    this.it = it
-                    this.value = null
-                    this.haveValue = false
-                    return it.next()
-                } else {
-                    val value = self.next()
-                    val it = try {
-                        f(value)
-                    } catch (e: Throwable) {
-                        if (e is VirtualMachineError) throw e
-                        this.haveValue = true
-                        this.value = value
-                        throw e
-                    }
-                    this.it = it
-                    this.value = null
-                    return it.next()
-                }
-            }
+            if (!advance()) throw NoSuchElementException()
+            return current!!.next()
         }
     }
 }

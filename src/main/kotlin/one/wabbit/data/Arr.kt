@@ -8,8 +8,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+@Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with=Arr.TypeSerializer::class)
-data class Arr<T>(@JvmField val unsafe: Array<Any?>)  {
+data class Arr<out T>(@JvmField val unsafe: Array<Any?>)  {
     inline val size: Int
         get() = unsafe.size
 
@@ -135,7 +136,7 @@ data class Arr<T>(@JvmField val unsafe: Array<Any?>)  {
     fun update(index: Int, value: Any?): Arr<T> =
         Arr(unsafe.clone().apply { this[index] = value })
 
-    operator fun plus(other: Arr<T>): Arr<T> {
+    operator fun plus(other: Arr<@UnsafeVariance T>): Arr<T> {
         val newArr = arrayOfNulls<Any?>(unsafe.size + other.unsafe.size)
         System.arraycopy(unsafe, 0, newArr, 0, unsafe.size)
         System.arraycopy(other.unsafe, 0, newArr, unsafe.size, other.unsafe.size)

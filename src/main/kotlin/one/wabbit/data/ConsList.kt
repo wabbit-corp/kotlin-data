@@ -30,6 +30,7 @@ sealed class ConsList<out V> : List<V> {
 
     fun toTypedArray(): Array<@UnsafeVariance V> {
         val size = size
+        @Suppress("UNCHECKED_CAST")
         val array = arrayOfNulls<Any?>(size) as Array<V>
         var i = 0
         var tail = this
@@ -210,7 +211,7 @@ sealed class ConsList<out V> : List<V> {
             override fun next(): V {
                 val c = current
                 if (c !is Cons)
-                    throw IndexOutOfBoundsException()
+                    throw NoSuchElementException()
                 val result = c.head
                 current = c.tail
                 return result

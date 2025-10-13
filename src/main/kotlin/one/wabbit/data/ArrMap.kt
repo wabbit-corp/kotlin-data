@@ -6,6 +6,7 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+@Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with=ArrMap.TypeSerializer::class)
 class ArrMap<K : Any, V>(
     @JvmField val unsafe: Array<Any?>,
