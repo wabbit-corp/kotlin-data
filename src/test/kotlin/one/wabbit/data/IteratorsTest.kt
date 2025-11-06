@@ -1,9 +1,12 @@
 package one.wabbit.data
 
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class IteratorsTest {
-
     // Helper: collect an Iterator into a List without using Sequences.
     private fun <T> Iterator<T>.toList(): List<T> {
         val out = mutableListOf<T>()
@@ -53,10 +56,11 @@ class IteratorsTest {
     @Test
     fun filter_hasNext_is_idempotent_and_prefetches() {
         var calls = 0
-        val it = iteratorOf(1, 2, 3).filter { x ->
-            calls++
-            x % 2 == 0
-        }
+        val it =
+            iteratorOf(1, 2, 3).filter { x ->
+                calls++
+                x % 2 == 0
+            }
         assertTrue(it.hasNext())
         // hasNext had to test 1 (false) and 2 (true)
         assertEquals(2, calls, "hasNext should prefetch until it finds a match.")
@@ -76,14 +80,15 @@ class IteratorsTest {
     @Test
     fun map_retry_after_exception_on_same_value() {
         var first = true
-        val it = iteratorOf(5).map { x ->
-            if (first) {
-                first = false
-                throw RuntimeException("boom")
-            } else {
-                x * 2
+        val it =
+            iteratorOf(5).map { x ->
+                if (first) {
+                    first = false
+                    throw RuntimeException("boom")
+                } else {
+                    x * 2
+                }
             }
-        }
 
         // First attempt throws:
         assertFailsWith<RuntimeException> { it.next() }
@@ -113,11 +118,10 @@ class IteratorsTest {
 
     @Test
     fun flatMap_skips_empty_inners() {
-        val it = iteratorOf(1, 2).flatMap { v ->
-            if (v == 1) iteratorOf() else iteratorOf(42)
-        }
+        val it = iteratorOf(1, 2).flatMap { v -> if (v == 1) iteratorOf() else iteratorOf(42) }
         // EXPECTED: [42]
-        // Current implementation returns false as soon as it hits an empty inner, ignoring remaining upstream.
+        // Current implementation returns false as soon as it hits an empty inner, ignoring
+        // remaining upstream.
         assertEquals(listOf(42), it.toList())
     }
 
@@ -125,24 +129,29 @@ class IteratorsTest {
     fun flatMap_hasNext_on_empty_upstream_returns_false_not_throw() {
         val it = iteratorOf().flatMap { iteratorOf(1) }
         // EXPECTED: false, not an exception.
-        // Current implementation may throw NoSuchElementException from hasNext(); this should fail until fixed.
+        // Current implementation may throw NoSuchElementException from hasNext(); this should fail
+        // until fixed.
         assertFalse(it.hasNext())
     }
 
     @Test
     fun flatMap_retry_after_exception_on_same_value() {
         var first = true
-        val it = iteratorOf(7).flatMap { x ->
-            if (first) {
-                first = false
-                throw RuntimeException("try again")
-            } else {
-                iteratorOf(x, x + 1)
+        val it =
+            iteratorOf(7).flatMap { x ->
+                if (first) {
+                    first = false
+                    throw RuntimeException("try again")
+                } else {
+                    iteratorOf(x, x + 1)
+                }
             }
-        }
 
         assertFailsWith<RuntimeException> { it.next() }
-        assertTrue(it.hasNext(), "After mapper throws once, iterator should retry the same upstream value.")
+        assertTrue(
+            it.hasNext(),
+            "After mapper throws once, iterator should retry the same upstream value.",
+        )
         assertEquals(listOf(7, 8), it.toList())
     }
 
@@ -164,9 +173,7 @@ class IteratorsTest {
 
     @Test
     fun map_and_filter_composition() {
-        val it = iteratorOf(1, 2, 3, 4)
-            .map { it * it }
-            .filter { it % 2 == 0 }
+        val it = iteratorOf(1, 2, 3, 4).map { it * it }.filter { it % 2 == 0 }
         assertEquals(listOf(4, 16), it.toList())
     }
 

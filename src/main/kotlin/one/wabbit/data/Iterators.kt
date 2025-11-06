@@ -1,16 +1,18 @@
 package one.wabbit.data
 
-fun iteratorOf(): Iterator<Nothing> {
-    return object : Iterator<Nothing> {
+fun iteratorOf(): Iterator<Nothing> =
+    object : Iterator<Nothing> {
         override fun hasNext(): Boolean = false
+
         override fun next(): Nothing = throw NoSuchElementException()
     }
-}
 
 fun <V> iteratorOf(v: V): Iterator<V> {
     return object : Iterator<V> {
         var done = false
+
         override fun hasNext(): Boolean = !done
+
         override fun next(): V {
             if (done) throw NoSuchElementException()
             done = true
@@ -18,10 +20,13 @@ fun <V> iteratorOf(v: V): Iterator<V> {
         }
     }
 }
+
 fun <V> iteratorOf(v1: V, v2: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
+
         override fun hasNext(): Boolean = index < 2
+
         override fun next(): V {
             if (index >= 2) throw NoSuchElementException()
             return when (index++) {
@@ -32,10 +37,13 @@ fun <V> iteratorOf(v1: V, v2: V): Iterator<V> {
         }
     }
 }
+
 fun <V> iteratorOf(v1: V, v2: V, v3: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
+
         override fun hasNext(): Boolean = index < 3
+
         override fun next(): V {
             if (index >= 3) throw NoSuchElementException()
             return when (index++) {
@@ -47,10 +55,13 @@ fun <V> iteratorOf(v1: V, v2: V, v3: V): Iterator<V> {
         }
     }
 }
+
 fun <V> iteratorOf(v1: V, v2: V, v3: V, v4: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
+
         override fun hasNext(): Boolean = index < 4
+
         override fun next(): V {
             if (index >= 4) throw NoSuchElementException()
             return when (index++) {
@@ -82,6 +93,7 @@ fun <A> Iterator<A>.filter(f: (A) -> Boolean): Iterator<A> {
             }
             return false
         }
+
         override fun next(): A {
             if (haveValue) {
                 val value = this.value
@@ -103,13 +115,12 @@ fun <A> Iterator<A>.filter(f: (A) -> Boolean): Iterator<A> {
 
 fun <T, U> Iterator<T>.map(f: (T) -> U): Iterator<U> {
     val self = this
-    return object: Iterator<U> {
+    return object : Iterator<U> {
         var haveValue: Boolean = false
         var value: T? = null
 
-        override fun hasNext(): Boolean {
-            return haveValue || self.hasNext()
-        }
+        override fun hasNext(): Boolean = haveValue || self.hasNext()
+
         override fun next(): U {
             if (haveValue) {
                 val value = this.value
@@ -151,24 +162,26 @@ fun <T, U> Iterator<T>.flatMap(f: (T) -> Iterator<U>): Iterator<U> {
                 current = null
 
                 // Choose the next T to expand.
-                val t: T = if (retry) {
-                    @Suppress("UNCHECKED_CAST")
-                    pending as T
-                } else {
-                    if (!upstream.hasNext()) return false
-                    upstream.next()
-                }
+                val t: T =
+                    if (retry) {
+                        @Suppress("UNCHECKED_CAST")
+                        pending as T
+                    } else {
+                        if (!upstream.hasNext()) return false
+                        upstream.next()
+                    }
 
                 // Try to create the new inner iterator.
-                val inner = try {
-                    f(t)
-                } catch (e: Throwable) {
-                    // Don’t mutate iterator state on fatal JVM errors.
-                    if (e is VirtualMachineError || e is Error) throw e
-                    retry = true
-                    pending = t
-                    throw e
-                }
+                val inner =
+                    try {
+                        f(t)
+                    } catch (e: Throwable) {
+                        // Don’t mutate iterator state on fatal JVM errors.
+                        if (e is VirtualMachineError || e is Error) throw e
+                        retry = true
+                        pending = t
+                        throw e
+                    }
 
                 // Mapping succeeded; clear retry state.
                 retry = false
@@ -196,6 +209,7 @@ fun <A, B> Iterator<A>.zip(other: Iterator<B>): Iterator<Pair<A, B>> {
     val self = this
     return object : Iterator<Pair<A, B>> {
         override fun hasNext(): Boolean = self.hasNext() && other.hasNext()
+
         override fun next(): Pair<A, B> = Pair(self.next(), other.next())
     }
 }

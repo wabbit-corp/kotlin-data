@@ -10,12 +10,12 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = FloatBuffer.TypeSerializer::class)
 class FloatBuffer(@JvmField internal var capacity: Int = 16) {
-
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
+
     @JvmField internal var buffer = FloatArray(capacity)
 
     constructor(values: FloatArray) : this(values.size) {
@@ -23,9 +23,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = values.size
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Helper Functions for Python‐style indexing
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     // For accessing elements (get, set, remove, swap, etc.)
     private fun normalizeAccessIndex(index: Int): Int {
@@ -60,9 +60,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,22 +90,20 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): FloatBuffer {
-            return FloatBuffer(decoder.decodeSerializableValue(listSerializer).toFloatArray())
-        }
+        override fun deserialize(decoder: Decoder): FloatBuffer =
+            FloatBuffer(decoder.decodeSerializableValue(listSerializer).toFloatArray())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Showable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    override fun toString(): String {
-        return "FloatBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
-    }
+    override fun toString(): String =
+        "FloatBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
@@ -128,9 +126,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = 0
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Finite C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     val size: Int
         get() = usedSize
@@ -141,9 +139,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun contains(value: Float): Boolean = indexOf(value) != -1
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun mapInPlace(transform: (Float) -> Float): FloatBuffer {
         for (i in 0 until size) {
@@ -163,9 +161,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun removeIf(predicate: (Float) -> Boolean): Boolean {
         var writeIndex = 0
@@ -191,9 +189,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun forEach(action: (Float) -> Unit) {
         for (i in 0 until size) action(buffer[i])
@@ -203,8 +201,11 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         val matching = FloatBuffer()
         val nonMatching = FloatBuffer()
         for (i in 0 until usedSize) {
-            if (predicate(buffer[i])) matching.add(buffer[i])
-            else nonMatching.add(buffer[i])
+            if (predicate(buffer[i])) {
+                matching.add(buffer[i])
+            } else {
+                nonMatching.add(buffer[i])
+            }
         }
         return matching to nonMatching
     }
@@ -268,9 +269,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun toFloatArray(): FloatArray {
-        return buffer.copyOfRange(0, size)
-    }
+    fun toFloatArray(): FloatArray = buffer.copyOfRange(0, size)
 
     fun toFloatBuffer(): FloatBuffer {
         val copy = FloatBuffer(usedSize)
@@ -283,17 +282,20 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     class Iterator(private val buf: FloatBuffer) : kotlin.collections.Iterator<Float> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun next(): Float = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    class MutableIterator(private val buf: FloatBuffer) : kotlin.collections.MutableIterator<Float> {
+    class MutableIterator(private val buf: FloatBuffer) :
+        kotlin.collections.MutableIterator<Float> {
         private var index = 0
         private var lastReturned = -1
 
@@ -315,9 +317,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun find(predicate: (Float) -> Boolean): Float? {
         for (i in 0 until size) {
@@ -337,13 +339,11 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Float): Int {
-        return buffer.binarySearch(value, 0, size)
-    }
+    fun binarySearch(value: Float): Int = buffer.binarySearch(value, 0, size)
 
     fun sorted(): FloatBuffer {
         val copy = this.copy()
@@ -351,13 +351,11 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Float {
-        return buffer[normalizeAccessIndex(index)]
-    }
+    operator fun get(index: Int): Float = buffer[normalizeAccessIndex(index)]
 
     fun getOrNull(index: Int): Float? {
         // Handle negative indices without throwing.
@@ -380,8 +378,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun lastOrNull(): Float? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Float) -> Boolean): Float? =
-        find(predicate)
+    fun findFirst(predicate: (Float) -> Boolean): Float? = find(predicate)
 
     fun findLast(predicate: (Float) -> Boolean): Float? {
         for (i in size - 1 downTo 0) {
@@ -448,9 +445,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     operator fun set(index: Int, value: Float) {
         buffer[normalizeAccessIndex(index)] = value
@@ -473,17 +470,28 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     operator fun set(range: IntRange, values: FloatArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
-        require(rangeSize == values.size) { "Array size ${values.size} must be equal to range size $rangeSize" }
+        require(rangeSize == values.size) {
+            "Array size ${values.size} must be equal to range size $rangeSize"
+        }
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    fun setRange(fromIndex: Int, values: FloatArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun setRange(
+        fromIndex: Int,
+        values: FloatArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = if (fromIndex < 0) usedSize + fromIndex else fromIndex
-        if (idx < 0 || idx > usedSize)
+        if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
+        }
         val rangeSize = endIndex - startIndex
-        if (idx + rangeSize > usedSize)
-            throw IndexOutOfBoundsException("Range out of bounds: $fromIndex + $rangeSize > $usedSize")
+        if (idx + rangeSize > usedSize) {
+            throw IndexOutOfBoundsException(
+                "Range out of bounds: $fromIndex + $rangeSize > $usedSize"
+            )
+        }
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
@@ -536,7 +544,12 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: List<Float>, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: List<Float>,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         var idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -595,19 +608,25 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     class ListIterator(private val buf: FloatBuffer) : kotlin.collections.ListIterator<Float> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun hasPrevious(): Boolean = index > 0
+
         override fun next(): Float = buf.buffer[index++]
+
         override fun nextIndex(): Int = index
+
         override fun previous(): Float = buf.buffer[--index]
+
         override fun previousIndex(): Int = index - 1
     }
 
     fun listIterator(): ListIterator = ListIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sort() {
         buffer.sort(0, size)
@@ -660,9 +679,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize -= rangeSize
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun minOrNull(): Float? {
         if (usedSize == 0) return null
@@ -686,9 +705,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun max(): Float = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sum(): Float {
         var s = 0f
@@ -696,9 +715,9 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return s.toFloat()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     companion object {
         fun empty(): FloatBuffer = FloatBuffer()
@@ -721,7 +740,12 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
-                buf.buffer.copyInto(result.buffer, destinationOffset = currentPos, startIndex = 0, endIndex = buf.size)
+                buf.buffer.copyInto(
+                    result.buffer,
+                    destinationOffset = currentPos,
+                    startIndex = 0,
+                    endIndex = buf.size,
+                )
                 currentPos += buf.size
             }
             // Set the usedSize directly
@@ -735,17 +759,11 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        fun from(values: FloatArray): FloatBuffer {
-            return FloatBuffer(values)
-        }
+        fun from(values: FloatArray): FloatBuffer = FloatBuffer(values)
 
-        fun from(values: FloatBuffer): FloatBuffer {
-            return values.copy()
-        }
+        fun from(values: FloatBuffer): FloatBuffer = values.copy()
 
-        fun from(values: FloatDeque): FloatBuffer {
-            return FloatBuffer(values.toFloatArray())
-        }
+        fun from(values: FloatDeque): FloatBuffer = FloatBuffer(values.toFloatArray())
 
         fun of(vararg values: Float): FloatBuffer {
             val buffer = FloatBuffer(values.size)

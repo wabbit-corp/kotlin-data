@@ -1,37 +1,38 @@
 package one.wabbit.data
 
+import java.lang.StringBuilder
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.lang.StringBuilder
 
 @Serializable(with = ConsList.TypeSerializer::class)
 sealed class ConsList<out V> : List<V> {
     abstract fun <Z> cata(nil: Z, cons: (V, Z) -> Z): Z
 
-    fun cons(value: @UnsafeVariance V): Cons<V> =
-        Cons(value, this)
+    fun cons(value: @UnsafeVariance V): Cons<V> = Cons(value, this)
 
-    fun head(): V = when (this) {
-        is Nil -> throw NoSuchElementException("head of empty list")
-        is Cons -> head
-    }
+    fun head(): V =
+        when (this) {
+            is Nil -> throw NoSuchElementException("head of empty list")
+            is Cons -> head
+        }
 
-    fun headOrNull(): V? = when (this) {
-        is Nil -> null
-        is Cons -> head
-    }
+    fun headOrNull(): V? =
+        when (this) {
+            is Nil -> null
+            is Cons -> head
+        }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Conversion
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun toTypedArray(): Array<@UnsafeVariance V> {
         val size = size
-        @Suppress("UNCHECKED_CAST")
-        val array = arrayOfNulls<Any?>(size) as Array<V>
+
+        @Suppress("UNCHECKED_CAST") val array = arrayOfNulls<Any?>(size) as Array<V>
         var i = 0
         var tail = this
         while (tail is Cons) {
@@ -51,10 +52,11 @@ sealed class ConsList<out V> : List<V> {
         return list
     }
 
-    fun toLazy(): LazyList<V> = when (this) {
-        is Nil -> LazyList.Nil
-        is Cons -> LazyList.Delay(Need.apply { LazyList.Cons(head, tail.toLazy()) })
-    }
+    fun toLazy(): LazyList<V> =
+        when (this) {
+            is Nil -> LazyList.Nil
+            is Cons -> LazyList.Delay(Need.apply { LazyList.Cons(head, tail.toLazy()) })
+        }
 
     fun reverse(): ConsList<V> {
         var tail = this
@@ -83,9 +85,9 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Folds
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun <Z> foldLeft(z: Z, s: (Z, V) -> Z): Z {
         var tail = this
@@ -112,9 +114,9 @@ sealed class ConsList<out V> : List<V> {
             is Cons -> s(head, tail.foldRightLazy(z, s))
         }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Operators
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun filter(f: (V) -> Boolean): ConsList<V> {
         var tail = this
@@ -149,8 +151,9 @@ sealed class ConsList<out V> : List<V> {
         var i = 0
         var current = this
         while (true) {
-            if (current !is Cons<V>)
+            if (current !is Cons<V>) {
                 throw IndexOutOfBoundsException("index: $index, size: $size")
+            }
             if (i == index) return current.head
             current = current.tail
             i += 1
@@ -161,10 +164,13 @@ sealed class ConsList<out V> : List<V> {
         if (index < 0) throw IndexOutOfBoundsException("index: $index")
         if (index >= size) throw IndexOutOfBoundsException("index: $index, size: $size")
 
-        fun go(list: ConsList<V>, i: Int): ConsList<V> = when (list) {
-            is Nil -> throw IndexOutOfBoundsException("index: $index, size: $size")
-            is Cons -> if (i == index) Cons(element, list.tail) else Cons(list.head, go(list.tail, i + 1))
-        }
+        fun go(list: ConsList<V>, i: Int): ConsList<V> =
+            when (list) {
+                is Nil -> throw IndexOutOfBoundsException("index: $index, size: $size")
+                is Cons ->
+                    if (i == index) Cons(element, list.tail)
+                    else Cons(list.head, go(list.tail, i + 1))
+            }
 
         return go(this, 0)
     }
@@ -210,8 +216,9 @@ sealed class ConsList<out V> : List<V> {
 
             override fun next(): V {
                 val c = current
-                if (c !is Cons)
+                if (c !is Cons) {
                     throw NoSuchElementException()
+                }
                 val result = c.head
                 current = c.tail
                 return result
@@ -233,10 +240,9 @@ sealed class ConsList<out V> : List<V> {
         }
     }
 
-    override fun listIterator(): ListIterator<V> =
-        toList().listIterator()
-    override fun listIterator(index: Int): ListIterator<V> =
-        toList().listIterator(index)
+    override fun listIterator(): ListIterator<V> = toList().listIterator()
+
+    override fun listIterator(index: Int): ListIterator<V> = toList().listIterator(index)
 
     // FIXME: This can be implemented more efficiently.
     override fun subList(fromIndex: Int, toIndex: Int): List<V> =
@@ -266,8 +272,9 @@ sealed class ConsList<out V> : List<V> {
                 }
 
                 sb.append(current.head)
-                if (current.tail !is Nil)
+                if (current.tail !is Nil) {
                     sb.append(", ")
+                }
 
                 current = current.tail
             }
@@ -282,24 +289,26 @@ sealed class ConsList<out V> : List<V> {
             encoder.encodeSerializableValue(ListSerializer(valueSerializer), value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): ConsList<A> {
-            return consListFrom(decoder.decodeSerializableValue(ListSerializer(valueSerializer)))
-        }
+        override fun deserialize(decoder: Decoder): ConsList<A> =
+            consListFrom(decoder.decodeSerializableValue(ListSerializer(valueSerializer)))
     }
 }
 
 fun <V> emptyConsList(): ConsList<V> = ConsList.Nil
+
 fun <V> consListOf(): ConsList<V> = ConsList.Nil
+
 fun <V> consListOf(vararg list: V): ConsList<V> {
     var result: ConsList<V> = ConsList.Nil
-    for (i in list.size-1 downTo 0) {
+    for (i in list.size - 1 downTo 0) {
         result = ConsList.Cons(list[i], result)
     }
     return result
 }
+
 fun <V> consListFrom(list: List<V>): ConsList<V> {
     var result: ConsList<V> = ConsList.Nil
-    for (i in list.size-1 downTo 0) {
+    for (i in list.size - 1 downTo 0) {
         result = ConsList.Cons(list[i], result)
     }
     return result

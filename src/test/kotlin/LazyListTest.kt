@@ -3,7 +3,8 @@ package one.wabbit.data
 import kotlin.test.Test
 
 class LazyListTest {
-    @Test fun test() {
+    @Test
+    fun test() {
         var total = 0L
         for (i in 0 until 10000 step 500) {
             System.gc()
@@ -12,9 +13,8 @@ class LazyListTest {
 
             val t0 = System.nanoTime() / 1_000_000.0
             for (j in 1..100) {
-                val list = LazyList.recursive<Int> { list ->
-                    LazyList.Cons(1) { list.map { it + 1 } }
-                }
+                val list =
+                    LazyList.recursive<Int> { list -> LazyList.Cons(1) { list.map { it + 1 } } }
                 val x = list[i]
                 total += x
             }

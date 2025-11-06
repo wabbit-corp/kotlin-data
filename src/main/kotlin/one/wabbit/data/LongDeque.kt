@@ -9,9 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = LongDeque.TypeSerializer::class)
-class LongDeque(
-    initialCapacity: Int = 16
-) {
+class LongDeque(initialCapacity: Int = 16) {
     private var capacity: Int = initialCapacity
     private var head: Int = 0
     private var tail: Int = 0
@@ -23,13 +21,12 @@ class LongDeque(
     }
 
     /**
-     * Ensure the underlying buffer can hold at least [needed] elements.
-     * If not, increase capacity and re-map all elements so that [head] becomes 0.
+     * Ensure the underlying buffer can hold at least [needed] elements. If not, increase capacity
+     * and re-map all elements so that [head] becomes 0.
      */
     private fun ensureCapacity(needed: Int) {
         if (needed <= capacity) return
-        val newCapacity = capacity * 3 / 2
-            .coerceAtLeast(needed)
+        val newCapacity = capacity * 3 / 2.coerceAtLeast(needed)
 
         val newBuffer = LongArray(newCapacity)
         // copy old elements into new buffer starting at index 0
@@ -58,9 +55,7 @@ class LongDeque(
         return result
     }
 
-    /**
-     * Push single element to the 'end' (tail).
-     */
+    /** Push single element to the 'end' (tail). */
     fun pushLast(value: Long) {
         ensureCapacity(size + 1)
         buffer[tail] = value
@@ -68,9 +63,7 @@ class LongDeque(
         size++
     }
 
-    /**
-     * Push an array of elements to the 'end' (tail).
-     */
+    /** Push an array of elements to the 'end' (tail). */
     fun pushLast(values: LongArray) {
         ensureCapacity(size + values.size)
         for (v in values) {
@@ -80,9 +73,7 @@ class LongDeque(
         size += values.size
     }
 
-    /**
-     * Push all elements of another Deque to the 'end' (tail).
-     */
+    /** Push all elements of another Deque to the 'end' (tail). */
     fun pushLast(values: LongDeque) {
         ensureCapacity(size + values.size)
         for (i in 0 until values.size) {
@@ -92,9 +83,7 @@ class LongDeque(
         size += values.size
     }
 
-    /**
-     * Push single element to the 'front' (head).
-     */
+    /** Push single element to the 'front' (head). */
     fun pushFirst(value: Long) {
         ensureCapacity(size + 1)
         head = (head - 1 + capacity) % capacity
@@ -103,8 +92,8 @@ class LongDeque(
     }
 
     /**
-     * Push an array of elements to the 'front' (head), preserving the order
-     * so that the first item in [values] ends up at the front.
+     * Push an array of elements to the 'front' (head), preserving the order so that the first item
+     * in [values] ends up at the front.
      */
     fun pushFirst(values: LongArray) {
         ensureCapacity(size + values.size)
@@ -117,9 +106,7 @@ class LongDeque(
         size += values.size
     }
 
-    /**
-     * Push all elements of another Deque to the 'front' (head), preserving order.
-     */
+    /** Push all elements of another Deque to the 'front' (head), preserving order. */
     fun pushFirst(values: LongDeque) {
         ensureCapacity(size + values.size)
         // Similarly, we traverse from the last element to the first in 'values'
@@ -130,9 +117,7 @@ class LongDeque(
         size += values.size
     }
 
-    /**
-     * Pop one element from the 'end' (tail).
-     */
+    /** Pop one element from the 'end' (tail). */
     fun popLast(): Long {
         require(size > 0) { "Cannot pop from empty deque" }
         tail = (tail - 1 + capacity) % capacity
@@ -141,9 +126,7 @@ class LongDeque(
         return value
     }
 
-    /**
-     * Pop [count] elements from the 'end' (tail).
-     */
+    /** Pop [count] elements from the 'end' (tail). */
     fun popLast(count: Int): LongArray {
         require(count <= size) { "Cannot pop more elements than the deque holds" }
         val result = LongArray(count)
@@ -155,9 +138,7 @@ class LongDeque(
         return result
     }
 
-    /**
-     * Pop one element from the 'front' (head).
-     */
+    /** Pop one element from the 'front' (head). */
     fun popFirst(): Long {
         require(size > 0) { "Cannot pop from empty deque" }
         val value = buffer[head]
@@ -166,9 +147,7 @@ class LongDeque(
         return value
     }
 
-    /**
-     * Pop [count] elements from the 'front' (head).
-     */
+    /** Pop [count] elements from the 'front' (head). */
     fun popFirst(count: Int): LongArray {
         require(count <= size) { "Cannot pop more elements than the deque holds" }
         val result = LongArray(count)
@@ -180,41 +159,34 @@ class LongDeque(
         return result
     }
 
-    /**
-     * Get the element at [index], 0-based from the 'front'.
-     */
+    /** Get the element at [index], 0-based from the 'front'. */
     operator fun get(index: Int): Long {
         require(index in 0 until size) { "Index out of bounds: $index" }
         return buffer[(head + index) % capacity]
     }
 
-    /**
-     * Set the element at [index].
-     */
+    /** Set the element at [index]. */
     operator fun set(index: Int, value: Long) {
         require(index in 0 until size) { "Index out of bounds: $index" }
         buffer[(head + index) % capacity] = value
     }
 
-    /**
-     * Simple iterator that walks from the front to the back of the deque.
-     */
+    /** Simple iterator that walks from the front to the back of the deque. */
     class Iterator(private val deque: LongDeque) : kotlin.collections.Iterator<Long> {
         private var index: Int = 0
+
         override fun hasNext(): Boolean = index < deque.size
+
         override fun next(): Long = deque[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    /**
-     * Expose the current number of elements.
-     */
-    val length: Int get() = size
+    /** Expose the current number of elements. */
+    val length: Int
+        get() = size
 
-    /**
-     * Serializer: just store it as a List<Long> internally.
-     */
+    /** Serializer: just store it as a List<Long> internally. */
     class TypeSerializer : KSerializer<LongDeque> {
         private val listSerializer = ListSerializer(Long.serializer())
         override val descriptor: SerialDescriptor = listSerializer.descriptor

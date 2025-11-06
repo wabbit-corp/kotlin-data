@@ -10,12 +10,12 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = ByteBuffer.TypeSerializer::class)
 class ByteBuffer(@JvmField internal var capacity: Int = 16) {
-
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
+
     @JvmField internal var buffer = ByteArray(capacity)
 
     constructor(values: ByteArray) : this(values.size) {
@@ -23,9 +23,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = values.size
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Helper Functions for Python‐style indexing
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     // For accessing elements (get, set, remove, swap, etc.)
     private fun normalizeAccessIndex(index: Int): Int {
@@ -60,9 +60,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,22 +90,20 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): ByteBuffer {
-            return ByteBuffer(decoder.decodeSerializableValue(listSerializer).toByteArray())
-        }
+        override fun deserialize(decoder: Decoder): ByteBuffer =
+            ByteBuffer(decoder.decodeSerializableValue(listSerializer).toByteArray())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Showable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    override fun toString(): String {
-        return "ByteBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
-    }
+    override fun toString(): String =
+        "ByteBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
@@ -128,9 +126,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = 0
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Finite C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     val size: Int
         get() = usedSize
@@ -141,9 +139,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun contains(value: Byte): Boolean = indexOf(value) != -1
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun mapInPlace(transform: (Byte) -> Byte): ByteBuffer {
         for (i in 0 until size) {
@@ -163,9 +161,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun removeIf(predicate: (Byte) -> Boolean): Boolean {
         var writeIndex = 0
@@ -191,9 +189,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun forEach(action: (Byte) -> Unit) {
         for (i in 0 until size) action(buffer[i])
@@ -203,8 +201,11 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         val matching = ByteBuffer()
         val nonMatching = ByteBuffer()
         for (i in 0 until usedSize) {
-            if (predicate(buffer[i])) matching.add(buffer[i])
-            else nonMatching.add(buffer[i])
+            if (predicate(buffer[i])) {
+                matching.add(buffer[i])
+            } else {
+                nonMatching.add(buffer[i])
+            }
         }
         return matching to nonMatching
     }
@@ -268,9 +269,7 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun toByteArray(): ByteArray {
-        return buffer.copyOfRange(0, size)
-    }
+    fun toByteArray(): ByteArray = buffer.copyOfRange(0, size)
 
     fun toByteBuffer(): ByteBuffer {
         val copy = ByteBuffer(usedSize)
@@ -283,15 +282,17 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     class Iterator(private val buf: ByteBuffer) : kotlin.collections.Iterator<Byte> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun next(): Byte = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     class MutableIterator(private val buf: ByteBuffer) : kotlin.collections.MutableIterator<Byte> {
         private var index = 0
@@ -315,9 +316,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun find(predicate: (Byte) -> Boolean): Byte? {
         for (i in 0 until size) {
@@ -337,13 +338,11 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Byte): Int {
-        return buffer.binarySearch(value, 0, size)
-    }
+    fun binarySearch(value: Byte): Int = buffer.binarySearch(value, 0, size)
 
     fun sorted(): ByteBuffer {
         val copy = this.copy()
@@ -351,13 +350,11 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Byte {
-        return buffer[normalizeAccessIndex(index)]
-    }
+    operator fun get(index: Int): Byte = buffer[normalizeAccessIndex(index)]
 
     fun getOrNull(index: Int): Byte? {
         // Handle negative indices without throwing.
@@ -380,8 +377,7 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun lastOrNull(): Byte? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Byte) -> Boolean): Byte? =
-        find(predicate)
+    fun findFirst(predicate: (Byte) -> Boolean): Byte? = find(predicate)
 
     fun findLast(predicate: (Byte) -> Boolean): Byte? {
         for (i in size - 1 downTo 0) {
@@ -448,9 +444,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     operator fun set(index: Int, value: Byte) {
         buffer[normalizeAccessIndex(index)] = value
@@ -473,17 +469,28 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
     operator fun set(range: IntRange, values: ByteArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
-        require(rangeSize == values.size) { "Array size ${values.size} must be equal to range size $rangeSize" }
+        require(rangeSize == values.size) {
+            "Array size ${values.size} must be equal to range size $rangeSize"
+        }
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    fun setRange(fromIndex: Int, values: ByteArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun setRange(
+        fromIndex: Int,
+        values: ByteArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = if (fromIndex < 0) usedSize + fromIndex else fromIndex
-        if (idx < 0 || idx > usedSize)
+        if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
+        }
         val rangeSize = endIndex - startIndex
-        if (idx + rangeSize > usedSize)
-            throw IndexOutOfBoundsException("Range out of bounds: $fromIndex + $rangeSize > $usedSize")
+        if (idx + rangeSize > usedSize) {
+            throw IndexOutOfBoundsException(
+                "Range out of bounds: $fromIndex + $rangeSize > $usedSize"
+            )
+        }
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
@@ -595,19 +602,25 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     class ListIterator(private val buf: ByteBuffer) : kotlin.collections.ListIterator<Byte> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun hasPrevious(): Boolean = index > 0
+
         override fun next(): Byte = buf.buffer[index++]
+
         override fun nextIndex(): Int = index
+
         override fun previous(): Byte = buf.buffer[--index]
+
         override fun previousIndex(): Int = index - 1
     }
 
     fun listIterator(): ListIterator = ListIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sort() {
         buffer.sort(0, size)
@@ -660,9 +673,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize -= rangeSize
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun minOrNull(): Byte? {
         if (usedSize == 0) return null
@@ -686,9 +699,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun max(): Byte = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sum(): Byte {
         var s = 0
@@ -696,9 +709,9 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
         return s.toByte()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     companion object {
         fun empty(): ByteBuffer = ByteBuffer()
@@ -721,7 +734,12 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
-                buf.buffer.copyInto(result.buffer, destinationOffset = currentPos, startIndex = 0, endIndex = buf.size)
+                buf.buffer.copyInto(
+                    result.buffer,
+                    destinationOffset = currentPos,
+                    startIndex = 0,
+                    endIndex = buf.size,
+                )
                 currentPos += buf.size
             }
             // Set the usedSize directly
@@ -735,17 +753,11 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        fun from(values: ByteArray): ByteBuffer {
-            return ByteBuffer(values)
-        }
+        fun from(values: ByteArray): ByteBuffer = ByteBuffer(values)
 
-        fun from(values: ByteBuffer): ByteBuffer {
-            return values.copy()
-        }
+        fun from(values: ByteBuffer): ByteBuffer = values.copy()
 
-        fun from(values: ByteDeque): ByteBuffer {
-            return ByteBuffer(values.toByteArray())
-        }
+        fun from(values: ByteDeque): ByteBuffer = ByteBuffer(values.toByteArray())
 
         fun of(vararg values: Byte): ByteBuffer {
             val buffer = ByteBuffer(values.size)

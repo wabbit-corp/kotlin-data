@@ -1,10 +1,13 @@
 package one.wabbit.data
 
-import java.util.*
+import java.util.Collections
+import java.util.EnumSet
+import java.util.Locale
+import java.util.SplittableRandom
+import java.util.UUID
+import java.util.WeakHashMap
 
-fun String.indent(indent: String): String {
-    return split("\n").joinToString("\n") { "$indent$it" }
-}
+fun String.indent(indent: String): String = split("\n").joinToString("\n") { "$indent$it" }
 
 fun <T> Iterable<T>.shuffled(random: SplittableRandom): List<T> {
     val list = toMutableList()
@@ -55,8 +58,7 @@ fun <T : Any> mutableWeakSetOf(): MutableSet<T> =
 fun <T : Any> mutableWeakSetOf(vararg elements: T): MutableSet<T> =
     elements.toCollection(Collections.newSetFromMap(WeakHashMap(elements.size)))
 
-fun <K : Any, V : Any> mutableWeakHashMapOf(): WeakHashMap<K, V> =
-    WeakHashMap<K, V>()
+fun <K : Any, V : Any> mutableWeakHashMapOf(): WeakHashMap<K, V> = WeakHashMap<K, V>()
 
 fun <K : Any, V : Any> mutableWeakHashMapOf(vararg elements: Pair<K, V>): WeakHashMap<K, V> {
     val result = WeakHashMap<K, V>(elements.size)
@@ -85,8 +87,9 @@ fun <V> closure(list: List<V>, f: (V) -> List<V>): List<V> {
     return s.toList()
 }
 
-fun String.capitalize(): String =
-    replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+fun String.capitalize(): String = replaceFirstChar {
+    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+}
 
 fun <T> Set<T>.isSubsetOf(t: Set<T>): Boolean = this.all { it in t }
 
@@ -94,8 +97,6 @@ fun Double.toStringWithDigits(digits: Int): String {
     assert(digits >= 0)
     return "%.${digits}f".format(this)
 }
-
-
 
 fun Byte.base16(): String {
     val value = toInt()
@@ -105,6 +106,7 @@ fun Byte.base16(): String {
         value.toString(16)
     }
 }
+
 fun ByteArray.base16(from: Int = 0, until: Int = this.size): String {
     val sb = StringBuilder()
     for (i in from until until) {

@@ -7,11 +7,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
-@Serializable(with=ArrMap.TypeSerializer::class)
-class ArrMap<K : Any, V>(
-    @JvmField val unsafe: Array<Any?>,
-    @JvmField val hashes: IntArray
-) {
+@Serializable(with = ArrMap.TypeSerializer::class)
+class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes: IntArray) {
     init {
         require(unsafe.size % 2 == 0) { "Expected even number of elements, got ${unsafe.size}" }
         require(unsafe.size / 2 == hashes.size) { "Expected hashes size to be half of unsafe size" }
@@ -21,12 +18,12 @@ class ArrMap<K : Any, V>(
         inline get() = hashes.size
 
     inline fun isEmpty(): Boolean = unsafe.isEmpty()
+
     inline fun isNotEmpty(): Boolean = !unsafe.isEmpty()
 
-    inline fun first(): Pair<K, V> =
-        Pair(unsafe[0] as K, unsafe[1] as V)
-    inline fun last(): Pair<K, V> =
-        Pair(unsafe[unsafe.size - 2] as K, unsafe[unsafe.size - 1] as V)
+    inline fun first(): Pair<K, V> = Pair(unsafe[0] as K, unsafe[1] as V)
+
+    inline fun last(): Pair<K, V> = Pair(unsafe[unsafe.size - 2] as K, unsafe[unsafe.size - 1] as V)
 
     operator fun get(key: K): V? {
         val unsafe = unsafe
@@ -110,54 +107,54 @@ class ArrMap<K : Any, V>(
 
     fun toMap(): Map<K, V> = toMutableMap()
 
-//    fun remove(key: K): ArrMap<K, V> {
-//        val unsafe = unsafe
-//        val size = unsafe.size
-//        if (size == 0) {
-//            return this
-//        }
-//        var i = 0
-//        while (i < size) {
-//            if (unsafe[i] == key) {
-//                val newArr = arrayOfNulls<Any?>(size - 2)
-//                System.arraycopy(unsafe, 0, newArr, 0, i)
-//                System.arraycopy(unsafe, i + 2, newArr, i, size - i - 2)
-//                return ArrMap(newArr)
-//            }
-//            i += 2
-//        }
-//        return this
-//    }
-//
-//    fun clear(): ArrMap<K, V> = ArrMap(emptyArray())
-//
-//    fun keys(): Arr<K> {
-//        val unsafe = unsafe
-//        val size = unsafe.size
-//        val result = arrayOfNulls<Any?>(size / 2)
-//        var i = 0
-//        var j = 0
-//        while (i < size) {
-//            result[j] = unsafe[i]
-//            i += 2
-//            j += 1
-//        }
-//        return Arr(result)
-//    }
-//
-//    fun values(): Arr<V> {
-//        val unsafe = unsafe
-//        val size = unsafe.size
-//        val result = arrayOfNulls<Any?>(size / 2)
-//        var i = 1
-//        var j = 0
-//        while (i < size) {
-//            result[j] = unsafe[i]
-//            i += 2
-//            j += 1
-//        }
-//        return Arr(result)
-//    }
+    //    fun remove(key: K): ArrMap<K, V> {
+    //        val unsafe = unsafe
+    //        val size = unsafe.size
+    //        if (size == 0) {
+    //            return this
+    //        }
+    //        var i = 0
+    //        while (i < size) {
+    //            if (unsafe[i] == key) {
+    //                val newArr = arrayOfNulls<Any?>(size - 2)
+    //                System.arraycopy(unsafe, 0, newArr, 0, i)
+    //                System.arraycopy(unsafe, i + 2, newArr, i, size - i - 2)
+    //                return ArrMap(newArr)
+    //            }
+    //            i += 2
+    //        }
+    //        return this
+    //    }
+    //
+    //    fun clear(): ArrMap<K, V> = ArrMap(emptyArray())
+    //
+    //    fun keys(): Arr<K> {
+    //        val unsafe = unsafe
+    //        val size = unsafe.size
+    //        val result = arrayOfNulls<Any?>(size / 2)
+    //        var i = 0
+    //        var j = 0
+    //        while (i < size) {
+    //            result[j] = unsafe[i]
+    //            i += 2
+    //            j += 1
+    //        }
+    //        return Arr(result)
+    //    }
+    //
+    //    fun values(): Arr<V> {
+    //        val unsafe = unsafe
+    //        val size = unsafe.size
+    //        val result = arrayOfNulls<Any?>(size / 2)
+    //        var i = 1
+    //        var j = 0
+    //        while (i < size) {
+    //            result[j] = unsafe[i]
+    //            i += 2
+    //            j += 1
+    //        }
+    //        return Arr(result)
+    //    }
 
     override fun toString(): String {
         val sb = StringBuilder()
@@ -179,6 +176,7 @@ class ArrMap<K : Any, V>(
     }
 
     private var _hashCode: Long = 0x100000000L
+
     override fun hashCode(): Int {
         val h = _hashCode
         if (h != 0x100000000L) {
@@ -188,6 +186,7 @@ class ArrMap<K : Any, V>(
         _hashCode = result.toLong()
         return result
     }
+
     private fun hashCodeImpl(): Int {
         var result = 1
         val size = hashes.size
@@ -239,20 +238,24 @@ class ArrMap<K : Any, V>(
         return false
     }
 
-    class TypeSerializer<K : Any, V>(val keySerializer: KSerializer<K>, val valueSerializer: KSerializer<V>) : KSerializer<ArrMap<K, V>> {
+    class TypeSerializer<K : Any, V>(
+        val keySerializer: KSerializer<K>,
+        val valueSerializer: KSerializer<V>,
+    ) : KSerializer<ArrMap<K, V>> {
         private val mapSerializer = MapSerializer(keySerializer, valueSerializer)
         override val descriptor = mapSerializer.descriptor
+
         override fun serialize(encoder: Encoder, value: ArrMap<K, V>) {
             mapSerializer.serialize(encoder, value.toMap())
         }
 
-        override fun deserialize(decoder: Decoder): ArrMap<K, V> {
-            return ArrMap.from<K, V>(mapSerializer.deserialize(decoder))
-        }
+        override fun deserialize(decoder: Decoder): ArrMap<K, V> =
+            ArrMap.from<K, V>(mapSerializer.deserialize(decoder))
     }
 
     companion object {
         private val EMPTY = ArrMap<Nothing, Nothing>(emptyArray(), intArrayOf())
+
         fun <K : Any, V> empty(): ArrMap<K, V> = EMPTY as ArrMap<K, V>
 
         fun <K : Any, V> from(map: Map<K, V>): ArrMap<K, V> {

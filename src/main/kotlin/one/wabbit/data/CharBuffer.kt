@@ -10,12 +10,12 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = CharBuffer.TypeSerializer::class)
 class CharBuffer(@JvmField internal var capacity: Int = 16) {
-
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
+
     @JvmField internal var buffer = CharArray(capacity)
 
     constructor(values: CharArray) : this(values.size) {
@@ -23,9 +23,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = values.size
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Helper Functions for Python‐style indexing
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     // For accessing elements (get, set, remove, swap, etc.)
     private fun normalizeAccessIndex(index: Int): Int {
@@ -60,9 +60,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,22 +90,20 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): CharBuffer {
-            return CharBuffer(decoder.decodeSerializableValue(listSerializer).toCharArray())
-        }
+        override fun deserialize(decoder: Decoder): CharBuffer =
+            CharBuffer(decoder.decodeSerializableValue(listSerializer).toCharArray())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Showable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    override fun toString(): String {
-        return "CharBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
-    }
+    override fun toString(): String =
+        "CharBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
@@ -128,9 +126,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = 0
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Finite C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     val size: Int
         get() = usedSize
@@ -141,9 +139,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun contains(value: Char): Boolean = indexOf(value) != -1
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun mapInPlace(transform: (Char) -> Char): CharBuffer {
         for (i in 0 until size) {
@@ -163,9 +161,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun removeIf(predicate: (Char) -> Boolean): Boolean {
         var writeIndex = 0
@@ -191,9 +189,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun forEach(action: (Char) -> Unit) {
         for (i in 0 until size) action(buffer[i])
@@ -203,8 +201,11 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         val matching = CharBuffer()
         val nonMatching = CharBuffer()
         for (i in 0 until usedSize) {
-            if (predicate(buffer[i])) matching.add(buffer[i])
-            else nonMatching.add(buffer[i])
+            if (predicate(buffer[i])) {
+                matching.add(buffer[i])
+            } else {
+                nonMatching.add(buffer[i])
+            }
         }
         return matching to nonMatching
     }
@@ -268,9 +269,7 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun toCharArray(): CharArray {
-        return buffer.copyOfRange(0, size)
-    }
+    fun toCharArray(): CharArray = buffer.copyOfRange(0, size)
 
     fun toCharBuffer(): CharBuffer {
         val copy = CharBuffer(usedSize)
@@ -283,15 +282,17 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     class Iterator(private val buf: CharBuffer) : kotlin.collections.Iterator<Char> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun next(): Char = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     class MutableIterator(private val buf: CharBuffer) : kotlin.collections.MutableIterator<Char> {
         private var index = 0
@@ -315,9 +316,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun find(predicate: (Char) -> Boolean): Char? {
         for (i in 0 until size) {
@@ -337,13 +338,11 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Char): Int {
-        return buffer.binarySearch(value, 0, size)
-    }
+    fun binarySearch(value: Char): Int = buffer.binarySearch(value, 0, size)
 
     fun sorted(): CharBuffer {
         val copy = this.copy()
@@ -351,13 +350,11 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Char {
-        return buffer[normalizeAccessIndex(index)]
-    }
+    operator fun get(index: Int): Char = buffer[normalizeAccessIndex(index)]
 
     fun getOrNull(index: Int): Char? {
         // Handle negative indices without throwing.
@@ -380,8 +377,7 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun lastOrNull(): Char? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Char) -> Boolean): Char? =
-        find(predicate)
+    fun findFirst(predicate: (Char) -> Boolean): Char? = find(predicate)
 
     fun findLast(predicate: (Char) -> Boolean): Char? {
         for (i in size - 1 downTo 0) {
@@ -448,9 +444,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     operator fun set(index: Int, value: Char) {
         buffer[normalizeAccessIndex(index)] = value
@@ -473,17 +469,28 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
     operator fun set(range: IntRange, values: CharArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
-        require(rangeSize == values.size) { "Array size ${values.size} must be equal to range size $rangeSize" }
+        require(rangeSize == values.size) {
+            "Array size ${values.size} must be equal to range size $rangeSize"
+        }
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    fun setRange(fromIndex: Int, values: CharArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun setRange(
+        fromIndex: Int,
+        values: CharArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = if (fromIndex < 0) usedSize + fromIndex else fromIndex
-        if (idx < 0 || idx > usedSize)
+        if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
+        }
         val rangeSize = endIndex - startIndex
-        if (idx + rangeSize > usedSize)
-            throw IndexOutOfBoundsException("Range out of bounds: $fromIndex + $rangeSize > $usedSize")
+        if (idx + rangeSize > usedSize) {
+            throw IndexOutOfBoundsException(
+                "Range out of bounds: $fromIndex + $rangeSize > $usedSize"
+            )
+        }
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
@@ -595,19 +602,25 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     class ListIterator(private val buf: CharBuffer) : kotlin.collections.ListIterator<Char> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun hasPrevious(): Boolean = index > 0
+
         override fun next(): Char = buf.buffer[index++]
+
         override fun nextIndex(): Int = index
+
         override fun previous(): Char = buf.buffer[--index]
+
         override fun previousIndex(): Int = index - 1
     }
 
     fun listIterator(): ListIterator = ListIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sort() {
         buffer.sort(0, size)
@@ -660,9 +673,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize -= rangeSize
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun minOrNull(): Char? {
         if (usedSize == 0) return null
@@ -686,9 +699,9 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun max(): Char = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     companion object {
         fun empty(): CharBuffer = CharBuffer()
@@ -711,7 +724,12 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
-                buf.buffer.copyInto(result.buffer, destinationOffset = currentPos, startIndex = 0, endIndex = buf.size)
+                buf.buffer.copyInto(
+                    result.buffer,
+                    destinationOffset = currentPos,
+                    startIndex = 0,
+                    endIndex = buf.size,
+                )
                 currentPos += buf.size
             }
             // Set the usedSize directly
@@ -725,17 +743,11 @@ class CharBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        fun from(values: CharArray): CharBuffer {
-            return CharBuffer(values)
-        }
+        fun from(values: CharArray): CharBuffer = CharBuffer(values)
 
-        fun from(values: CharBuffer): CharBuffer {
-            return values.copy()
-        }
+        fun from(values: CharBuffer): CharBuffer = values.copy()
 
-        fun from(values: CharDeque): CharBuffer {
-            return CharBuffer(values.toCharArray())
-        }
+        fun from(values: CharDeque): CharBuffer = CharBuffer(values.toCharArray())
 
         fun of(vararg values: Char): CharBuffer {
             val buffer = CharBuffer(values.size)

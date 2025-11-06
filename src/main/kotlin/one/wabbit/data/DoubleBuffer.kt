@@ -10,12 +10,12 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = DoubleBuffer.TypeSerializer::class)
 class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
-
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
+
     @JvmField internal var buffer = DoubleArray(capacity)
 
     constructor(values: DoubleArray) : this(values.size) {
@@ -23,9 +23,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = values.size
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Helper Functions for Python‐style indexing
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     // For accessing elements (get, set, remove, swap, etc.)
     private fun normalizeAccessIndex(index: Int): Int {
@@ -60,9 +60,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,22 +90,20 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): DoubleBuffer {
-            return DoubleBuffer(decoder.decodeSerializableValue(listSerializer).toDoubleArray())
-        }
+        override fun deserialize(decoder: Decoder): DoubleBuffer =
+            DoubleBuffer(decoder.decodeSerializableValue(listSerializer).toDoubleArray())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Showable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    override fun toString(): String {
-        return "DoubleBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
-    }
+    override fun toString(): String =
+        "DoubleBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
@@ -128,9 +126,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = 0
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Finite C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     val size: Int
         get() = usedSize
@@ -141,9 +139,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun contains(value: Double): Boolean = indexOf(value) != -1
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun mapInPlace(transform: (Double) -> Double): DoubleBuffer {
         for (i in 0 until size) {
@@ -163,9 +161,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun removeIf(predicate: (Double) -> Boolean): Boolean {
         var writeIndex = 0
@@ -191,9 +189,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun forEach(action: (Double) -> Unit) {
         for (i in 0 until size) action(buffer[i])
@@ -203,8 +201,11 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         val matching = DoubleBuffer()
         val nonMatching = DoubleBuffer()
         for (i in 0 until usedSize) {
-            if (predicate(buffer[i])) matching.add(buffer[i])
-            else nonMatching.add(buffer[i])
+            if (predicate(buffer[i])) {
+                matching.add(buffer[i])
+            } else {
+                nonMatching.add(buffer[i])
+            }
         }
         return matching to nonMatching
     }
@@ -268,9 +269,7 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun toDoubleArray(): DoubleArray {
-        return buffer.copyOfRange(0, size)
-    }
+    fun toDoubleArray(): DoubleArray = buffer.copyOfRange(0, size)
 
     fun toDoubleBuffer(): DoubleBuffer {
         val copy = DoubleBuffer(usedSize)
@@ -283,17 +282,20 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     class Iterator(private val buf: DoubleBuffer) : kotlin.collections.Iterator<Double> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun next(): Double = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    class MutableIterator(private val buf: DoubleBuffer) : kotlin.collections.MutableIterator<Double> {
+    class MutableIterator(private val buf: DoubleBuffer) :
+        kotlin.collections.MutableIterator<Double> {
         private var index = 0
         private var lastReturned = -1
 
@@ -315,9 +317,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun find(predicate: (Double) -> Boolean): Double? {
         for (i in 0 until size) {
@@ -337,13 +339,11 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Double): Int {
-        return buffer.binarySearch(value, 0, size)
-    }
+    fun binarySearch(value: Double): Int = buffer.binarySearch(value, 0, size)
 
     fun sorted(): DoubleBuffer {
         val copy = this.copy()
@@ -351,13 +351,11 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Double {
-        return buffer[normalizeAccessIndex(index)]
-    }
+    operator fun get(index: Int): Double = buffer[normalizeAccessIndex(index)]
 
     fun getOrNull(index: Int): Double? {
         // Handle negative indices without throwing.
@@ -380,8 +378,7 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun lastOrNull(): Double? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Double) -> Boolean): Double? =
-        find(predicate)
+    fun findFirst(predicate: (Double) -> Boolean): Double? = find(predicate)
 
     fun findLast(predicate: (Double) -> Boolean): Double? {
         for (i in size - 1 downTo 0) {
@@ -448,9 +445,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     operator fun set(index: Int, value: Double) {
         buffer[normalizeAccessIndex(index)] = value
@@ -473,17 +470,28 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     operator fun set(range: IntRange, values: DoubleArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
-        require(rangeSize == values.size) { "Array size ${values.size} must be equal to range size $rangeSize" }
+        require(rangeSize == values.size) {
+            "Array size ${values.size} must be equal to range size $rangeSize"
+        }
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    fun setRange(fromIndex: Int, values: DoubleArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun setRange(
+        fromIndex: Int,
+        values: DoubleArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = if (fromIndex < 0) usedSize + fromIndex else fromIndex
-        if (idx < 0 || idx > usedSize)
+        if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
+        }
         val rangeSize = endIndex - startIndex
-        if (idx + rangeSize > usedSize)
-            throw IndexOutOfBoundsException("Range out of bounds: $fromIndex + $rangeSize > $usedSize")
+        if (idx + rangeSize > usedSize) {
+            throw IndexOutOfBoundsException(
+                "Range out of bounds: $fromIndex + $rangeSize > $usedSize"
+            )
+        }
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
@@ -523,7 +531,12 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         buffer[usedSize++] = value
     }
 
-    fun insertAt(index: Int, values: DoubleArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: DoubleArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -536,7 +549,12 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: List<Double>, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: List<Double>,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         var idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -595,19 +613,25 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     class ListIterator(private val buf: DoubleBuffer) : kotlin.collections.ListIterator<Double> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun hasPrevious(): Boolean = index > 0
+
         override fun next(): Double = buf.buffer[index++]
+
         override fun nextIndex(): Int = index
+
         override fun previous(): Double = buf.buffer[--index]
+
         override fun previousIndex(): Int = index - 1
     }
 
     fun listIterator(): ListIterator = ListIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sort() {
         buffer.sort(0, size)
@@ -660,9 +684,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize -= rangeSize
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun minOrNull(): Double? {
         if (usedSize == 0) return null
@@ -686,9 +710,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun max(): Double = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sum(): Double {
         var s = 0.0
@@ -696,9 +720,9 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
         return s.toDouble()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     companion object {
         fun empty(): DoubleBuffer = DoubleBuffer()
@@ -721,7 +745,12 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
-                buf.buffer.copyInto(result.buffer, destinationOffset = currentPos, startIndex = 0, endIndex = buf.size)
+                buf.buffer.copyInto(
+                    result.buffer,
+                    destinationOffset = currentPos,
+                    startIndex = 0,
+                    endIndex = buf.size,
+                )
                 currentPos += buf.size
             }
             // Set the usedSize directly
@@ -735,17 +764,11 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        fun from(values: DoubleArray): DoubleBuffer {
-            return DoubleBuffer(values)
-        }
+        fun from(values: DoubleArray): DoubleBuffer = DoubleBuffer(values)
 
-        fun from(values: DoubleBuffer): DoubleBuffer {
-            return values.copy()
-        }
+        fun from(values: DoubleBuffer): DoubleBuffer = values.copy()
 
-        fun from(values: DoubleDeque): DoubleBuffer {
-            return DoubleBuffer(values.toDoubleArray())
-        }
+        fun from(values: DoubleDeque): DoubleBuffer = DoubleBuffer(values.toDoubleArray())
 
         fun of(vararg values: Double): DoubleBuffer {
             val buffer = DoubleBuffer(values.size)

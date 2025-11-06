@@ -4,13 +4,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BankersQueue<out A>(
-    val ls: Int, val left: LazyList<A>,
-    val rs: Int, val right: ConsList<A>
+    val ls: Int,
+    val left: LazyList<A>,
+    val rs: Int,
+    val right: ConsList<A>,
 ) {
     fun isEmpty(): Boolean = ls == 0
 
-    fun snoc(x: @UnsafeVariance A): BankersQueue<A> =
-        check(ls, left, rs + 1, right.cons(x))
+    fun snoc(x: @UnsafeVariance A): BankersQueue<A> = check(ls, left, rs + 1, right.cons(x))
 
     fun snocReversed(xs: ConsList<@UnsafeVariance A>): BankersQueue<A> =
         check(ls, left, rs + 1, xs + right)
@@ -29,8 +30,16 @@ data class BankersQueue<out A>(
 
         fun <A> empty() = BankersQueue(0, LazyList.Nil, 0, ConsList.Nil)
 
-        private fun <A> check(ls: Int, left: LazyList<A>, rs: Int, right: ConsList<A>): BankersQueue<A> =
-            if (rs <= ls) BankersQueue(ls, left, rs, right)
-            else BankersQueue(ls + rs, left + right.reverseLazy(), 0, ConsList.Nil)
+        private fun <A> check(
+            ls: Int,
+            left: LazyList<A>,
+            rs: Int,
+            right: ConsList<A>,
+        ): BankersQueue<A> =
+            if (rs <= ls) {
+                BankersQueue(ls, left, rs, right)
+            } else {
+                BankersQueue(ls + rs, left + right.reverseLazy(), 0, ConsList.Nil)
+            }
     }
 }

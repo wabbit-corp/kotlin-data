@@ -1,6 +1,6 @@
-//package one.wabbit.data
+// package one.wabbit.data
 //
-///**
+// /**
 // * Represents an immutable, persistent collection of values of type [A].
 // *
 // * The [Chunk] type provides high-performance operations for concatenation,
@@ -47,7 +47,7 @@
 // * - For bulk processing, prefer methods like [materialize] or specialized
 // *   array-backed chunks.
 // */
-//sealed class Chunk<out A> {
+// sealed class Chunk<out A> {
 //    /**
 //     * The number of elements in this chunk.
 //     */
@@ -531,7 +531,8 @@
 //
 //        override fun get(index: Int): Boolean {
 //            if (index < 0 || index >= array.size) {
-//                throw IndexOutOfBoundsException("BooleanArrayChunk index=$index size=${array.size}")
+//                throw IndexOutOfBoundsException("BooleanArrayChunk index=$index
+// size=${array.size}")
 //            }
 //            return array[index]
 //        }
@@ -686,7 +687,8 @@
 //
 //        override fun get(index: Int): Double {
 //            if (index < 0 || index >= array.size) {
-//                throw IndexOutOfBoundsException("DoubleArrayChunk index=$index size=${array.size}")
+//                throw IndexOutOfBoundsException("DoubleArrayChunk index=$index
+// size=${array.size}")
 //            }
 //            return array[index]
 //        }
@@ -873,7 +875,8 @@
 //
 //        override fun get(index: Int): A {
 //            if (index < 0 || index >= lengthSlice) {
-//                throw IndexOutOfBoundsException("Slice index=$index offset=$offset length=$lengthSlice")
+//                throw IndexOutOfBoundsException("Slice index=$index offset=$offset
+// length=$lengthSlice")
 //            }
 //            return chunk[offset + index]
 //        }
@@ -965,7 +968,8 @@
 //                override fun hasNextAt(index: Int): Boolean = index < bufferUsed
 //                override fun nextAt(index: Int): A {
 //                    if (index < 0 || index >= bufferUsed)
-//                        throw IndexOutOfBoundsException("AppendN buffer idx=$index used=$bufferUsed")
+//                        throw IndexOutOfBoundsException("AppendN buffer idx=$index
+// used=$bufferUsed")
 //                    return buffer[index] as A
 //                }
 //                override fun sliceIterator(o: Int, l: Int): ChunkIterator<A> {
@@ -1045,7 +1049,8 @@
 //                override fun hasNextAt(index: Int): Boolean = index < bufferUsed
 //                override fun nextAt(index: Int): A {
 //                    if (index < 0 || index >= bufferUsed)
-//                        throw IndexOutOfBoundsException("PrependN buffer idx=$index used=$bufferUsed")
+//                        throw IndexOutOfBoundsException("PrependN buffer idx=$index
+// used=$bufferUsed")
 //                    val startIdx = buffer.size - bufferUsed
 //                    return buffer[startIdx + index] as A
 //                }
@@ -1289,19 +1294,19 @@
 //            return Concat(arrayOf(left, right)).rebalance()
 //        }
 //    }
-//}
+// }
 //
-///**
+// /**
 // * Constructs an immutable [Chunk] from the specified elements.
 // */
-//fun <A> chunkOf(vararg elements: A): Chunk<A> = Chunk.chunkOf(*elements)
+// fun <A> chunkOf(vararg elements: A): Chunk<A> = Chunk.chunkOf(*elements)
 //
-///**
+// /**
 // * A specialized builder for [Chunk]. For performance reasons, it can hold
 // * elements in a [MutableList] or a specialized structure, then produce
 // * a chunk efficiently via [result].
 // */
-//class ChunkBuilder<A>(initialCapacity: Int = 16) {
+// class ChunkBuilder<A>(initialCapacity: Int = 16) {
 //    private val buf = ArrayList<A>(initialCapacity)
 //
 //    operator fun plusAssign(value: A) {
@@ -1321,31 +1326,31 @@
 //            else -> Chunk.ArrayChunk(buf.toArrayOf())
 //        }
 //    }
-//}
+// }
 //
-//private fun <T> List<T>.toArrayOf(): kotlin.Array<T> {
+// private fun <T> List<T>.toArrayOf(): kotlin.Array<T> {
 //    @Suppress("UNCHECKED_CAST")
 //    val arr = arrayOfNulls<Any>(this.size) as kotlin.Array<T>
 //    for (i in this.indices) {
 //        arr[i] = this[i]
 //    }
 //    return arr
-//}
+// }
 //
-//// region: ChunkIterator
-///**
+// // region: ChunkIterator
+// /**
 // * A specialized iterator for [Chunk], allowing the caller to manage the
 // * current index for performance. This replicates the design in Scala code
 // * for chunk iteration.
 // */
-//interface ChunkIterator<out A> {
+// interface ChunkIterator<out A> {
 //    val length: Int
 //    fun hasNextAt(index: Int): Boolean
 //    fun nextAt(index: Int): A
 //    fun sliceIterator(offset: Int, length: Int): ChunkIterator<A>
-//}
+// }
 //
-//object ChunkIterator {
+// object ChunkIterator {
 //    val Empty: ChunkIterator<Nothing> = object : ChunkIterator<Nothing> {
 //        override val length: Int = 0
 //        override fun hasNextAt(index: Int): Boolean = false
@@ -1353,11 +1358,11 @@
 //            throw IndexOutOfBoundsException("Empty ChunkIterator nextAt($index)")
 //        override fun sliceIterator(offset: Int, length: Int): ChunkIterator<Nothing> = this
 //    }
-//}
+// }
 //
-//class ArrayChunkIterator<A>(
+// class ArrayChunkIterator<A>(
 //    private val array: kotlin.Array<A>
-//) : ChunkIterator<A> {
+// ) : ChunkIterator<A> {
 //    override val length: Int get() = array.size
 //
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
@@ -1374,11 +1379,11 @@
 //        val newArray = array.copyOfRange(start, end)
 //        return ArrayChunkIterator(newArray)
 //    }
-//}
+// }
 //
-//class ByteArrayChunkIterator(
+// class ByteArrayChunkIterator(
 //    private val array: kotlin.ByteArray
-//) : ChunkIterator<Byte> {
+// ) : ChunkIterator<Byte> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Byte {
@@ -1391,11 +1396,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return ByteArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class BooleanArrayChunkIterator(
+// class BooleanArrayChunkIterator(
 //    private val array: kotlin.BooleanArray
-//) : ChunkIterator<Boolean> {
+// ) : ChunkIterator<Boolean> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Boolean {
@@ -1408,11 +1413,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return BooleanArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class IntArrayChunkIterator(
+// class IntArrayChunkIterator(
 //    private val array: kotlin.IntArray
-//) : ChunkIterator<Int> {
+// ) : ChunkIterator<Int> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Int {
@@ -1425,11 +1430,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return IntArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class ShortArrayChunkIterator(
+// class ShortArrayChunkIterator(
 //    private val array: kotlin.ShortArray
-//) : ChunkIterator<Short> {
+// ) : ChunkIterator<Short> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Short {
@@ -1442,11 +1447,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return ShortArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class LongArrayChunkIterator(
+// class LongArrayChunkIterator(
 //    private val array: kotlin.LongArray
-//) : ChunkIterator<Long> {
+// ) : ChunkIterator<Long> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Long {
@@ -1459,11 +1464,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return LongArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class FloatArrayChunkIterator(
+// class FloatArrayChunkIterator(
 //    private val array: kotlin.FloatArray
-//) : ChunkIterator<Float> {
+// ) : ChunkIterator<Float> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Float {
@@ -1476,11 +1481,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return FloatArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class DoubleArrayChunkIterator(
+// class DoubleArrayChunkIterator(
 //    private val array: kotlin.DoubleArray
-//) : ChunkIterator<Double> {
+// ) : ChunkIterator<Double> {
 //    override val length: Int get() = array.size
 //    override fun hasNextAt(index: Int): Boolean = index < array.size
 //    override fun nextAt(index: Int): Double {
@@ -1493,11 +1498,11 @@
 //        val end = (offset + length).coerceAtLeast(start).coerceAtMost(array.size)
 //        return DoubleArrayChunkIterator(array.copyOfRange(start, end))
 //    }
-//}
+// }
 //
-//class StringChunkIterator(
+// class StringChunkIterator(
 //    private val string: kotlin.String
-//) : ChunkIterator<Char> {
+// ) : ChunkIterator<Char> {
 //    override val length: Int get() = string.length
 //    override fun hasNextAt(index: Int): Boolean = index < string.length
 //    override fun nextAt(index: Int): Char {
@@ -1511,11 +1516,11 @@
 //        val sub = string.substring(start, end)
 //        return StringChunkIterator(sub)
 //    }
-//}
+// }
 //
-//class ConcatChunkIterator<A>(
+// class ConcatChunkIterator<A>(
 //    private val iterators: kotlin.Array<ChunkIterator<A>>
-//) : ChunkIterator<A> {
+// ) : ChunkIterator<A> {
 //    private val totalLength by lazy { iterators.sumOf { it.length.toLong() }.toInt() }
 //
 //    override val length: Int get() = totalLength
@@ -1532,7 +1537,8 @@
 //    }
 //
 //    override fun sliceIterator(offset: Int, length: Int): ChunkIterator<A> {
-//        // Simple approach: materialize the slice as an array chunk, then return array chunk iterator
+//        // Simple approach: materialize the slice as an array chunk, then return array chunk
+// iterator
 //        val builder = ChunkBuilder<A>(length)
 //        for (i in offset until offset + length) {
 //            if (i >= totalLength) break
@@ -1541,5 +1547,5 @@
 //        val arr = builder.result().toArray()
 //        return ArrayChunkIterator(arr)
 //    }
-//}
-//// endregion
+// }
+// // endregion

@@ -10,12 +10,12 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = ShortBuffer.TypeSerializer::class)
 class ShortBuffer(@JvmField internal var capacity: Int = 16) {
-
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
+
     @JvmField internal var buffer = ShortArray(capacity)
 
     constructor(values: ShortArray) : this(values.size) {
@@ -23,9 +23,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = values.size
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Helper Functions for Python‐style indexing
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     // For accessing elements (get, set, remove, swap, etc.)
     private fun normalizeAccessIndex(index: Int): Int {
@@ -60,9 +60,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,22 +90,20 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): ShortBuffer {
-            return ShortBuffer(decoder.decodeSerializableValue(listSerializer).toShortArray())
-        }
+        override fun deserialize(decoder: Decoder): ShortBuffer =
+            ShortBuffer(decoder.decodeSerializableValue(listSerializer).toShortArray())
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Showable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    override fun toString(): String {
-        return "ShortBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
-    }
+    override fun toString(): String =
+        "ShortBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
@@ -128,9 +126,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize = 0
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Finite C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     val size: Int
         get() = usedSize
@@ -141,9 +139,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun contains(value: Short): Boolean = indexOf(value) != -1
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun mapInPlace(transform: (Short) -> Short): ShortBuffer {
         for (i in 0 until size) {
@@ -163,9 +161,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun removeIf(predicate: (Short) -> Boolean): Boolean {
         var writeIndex = 0
@@ -191,9 +189,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun forEach(action: (Short) -> Unit) {
         for (i in 0 until size) action(buffer[i])
@@ -203,8 +201,11 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         val matching = ShortBuffer()
         val nonMatching = ShortBuffer()
         for (i in 0 until usedSize) {
-            if (predicate(buffer[i])) matching.add(buffer[i])
-            else nonMatching.add(buffer[i])
+            if (predicate(buffer[i])) {
+                matching.add(buffer[i])
+            } else {
+                nonMatching.add(buffer[i])
+            }
         }
         return matching to nonMatching
     }
@@ -268,9 +269,7 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun toShortArray(): ShortArray {
-        return buffer.copyOfRange(0, size)
-    }
+    fun toShortArray(): ShortArray = buffer.copyOfRange(0, size)
 
     fun toShortBuffer(): ShortBuffer {
         val copy = ShortBuffer(usedSize)
@@ -283,17 +282,20 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     class Iterator(private val buf: ShortBuffer) : kotlin.collections.Iterator<Short> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun next(): Short = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    class MutableIterator(private val buf: ShortBuffer) : kotlin.collections.MutableIterator<Short> {
+    class MutableIterator(private val buf: ShortBuffer) :
+        kotlin.collections.MutableIterator<Short> {
         private var index = 0
         private var lastReturned = -1
 
@@ -315,9 +317,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun find(predicate: (Short) -> Boolean): Short? {
         for (i in 0 until size) {
@@ -337,13 +339,11 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Short): Int {
-        return buffer.binarySearch(value, 0, size)
-    }
+    fun binarySearch(value: Short): Int = buffer.binarySearch(value, 0, size)
 
     fun sorted(): ShortBuffer {
         val copy = this.copy()
@@ -351,13 +351,11 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Short {
-        return buffer[normalizeAccessIndex(index)]
-    }
+    operator fun get(index: Int): Short = buffer[normalizeAccessIndex(index)]
 
     fun getOrNull(index: Int): Short? {
         // Handle negative indices without throwing.
@@ -380,8 +378,7 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun lastOrNull(): Short? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Short) -> Boolean): Short? =
-        find(predicate)
+    fun findFirst(predicate: (Short) -> Boolean): Short? = find(predicate)
 
     fun findLast(predicate: (Short) -> Boolean): Short? {
         for (i in size - 1 downTo 0) {
@@ -448,9 +445,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     operator fun set(index: Int, value: Short) {
         buffer[normalizeAccessIndex(index)] = value
@@ -473,17 +470,28 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
     operator fun set(range: IntRange, values: ShortArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
-        require(rangeSize == values.size) { "Array size ${values.size} must be equal to range size $rangeSize" }
+        require(rangeSize == values.size) {
+            "Array size ${values.size} must be equal to range size $rangeSize"
+        }
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    fun setRange(fromIndex: Int, values: ShortArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun setRange(
+        fromIndex: Int,
+        values: ShortArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = if (fromIndex < 0) usedSize + fromIndex else fromIndex
-        if (idx < 0 || idx > usedSize)
+        if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
+        }
         val rangeSize = endIndex - startIndex
-        if (idx + rangeSize > usedSize)
-            throw IndexOutOfBoundsException("Range out of bounds: $fromIndex + $rangeSize > $usedSize")
+        if (idx + rangeSize > usedSize) {
+            throw IndexOutOfBoundsException(
+                "Range out of bounds: $fromIndex + $rangeSize > $usedSize"
+            )
+        }
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
@@ -536,7 +544,12 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: List<Short>, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: List<Short>,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         var idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -595,19 +608,25 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     class ListIterator(private val buf: ShortBuffer) : kotlin.collections.ListIterator<Short> {
         private var index = 0
+
         override fun hasNext(): Boolean = index < buf.usedSize
+
         override fun hasPrevious(): Boolean = index > 0
+
         override fun next(): Short = buf.buffer[index++]
+
         override fun nextIndex(): Int = index
+
         override fun previous(): Short = buf.buffer[--index]
+
         override fun previousIndex(): Int = index - 1
     }
 
     fun listIterator(): ListIterator = ListIterator(this)
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sort() {
         buffer.sort(0, size)
@@ -660,9 +679,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize -= rangeSize
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Comparable T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun minOrNull(): Short? {
         if (usedSize == 0) return null
@@ -686,9 +705,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun max(): Short = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     fun sum(): Short {
         var s = 0
@@ -696,9 +715,9 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
         return s.toShort()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
-    ///////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////
 
     companion object {
         fun empty(): ShortBuffer = ShortBuffer()
@@ -721,7 +740,12 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
-                buf.buffer.copyInto(result.buffer, destinationOffset = currentPos, startIndex = 0, endIndex = buf.size)
+                buf.buffer.copyInto(
+                    result.buffer,
+                    destinationOffset = currentPos,
+                    startIndex = 0,
+                    endIndex = buf.size,
+                )
                 currentPos += buf.size
             }
             // Set the usedSize directly
@@ -735,17 +759,11 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        fun from(values: ShortArray): ShortBuffer {
-            return ShortBuffer(values)
-        }
+        fun from(values: ShortArray): ShortBuffer = ShortBuffer(values)
 
-        fun from(values: ShortBuffer): ShortBuffer {
-            return values.copy()
-        }
+        fun from(values: ShortBuffer): ShortBuffer = values.copy()
 
-        fun from(values: ShortDeque): ShortBuffer {
-            return ShortBuffer(values.toShortArray())
-        }
+        fun from(values: ShortDeque): ShortBuffer = ShortBuffer(values.toShortArray())
 
         fun of(vararg values: Short): ShortBuffer {
             val buffer = ShortBuffer(values.size)
