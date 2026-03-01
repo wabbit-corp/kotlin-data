@@ -32,7 +32,7 @@ publishing {
 }
 
 dependencies {
-    implementation("com.github.wabbit-corp:kotlin-data-need:1.2.0")
+    implementation("one.wabbit:kotlin-data-need:1.2.0")
 
     testImplementation(kotlin("test"))
 
