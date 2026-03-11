@@ -1,6 +1,4 @@
 package one.wabbit.data
-
-import java.lang.StringBuilder
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
