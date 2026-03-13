@@ -77,15 +77,14 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
             var outputPtr = 0
 
             while (current != null) {
-                val javaClass = current.javaClass
-                if (javaClass === Empty::class.java) {
+                if (current === Empty) {
                     if (stackPtr > 0) {
                         stackPtr -= 1
                         current = rights[stackPtr]
                     } else {
                         current = null
                     }
-                } else if (javaClass === WrapList::class.java) {
+                } else if (current is WrapList<*>) {
                     val s = current as WrapList<Any>
                     for (value in s.values) {
                         out(outputPtr++, value)
@@ -97,8 +96,8 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
                     } else {
                         current = null
                     }
-                } else if (javaClass === WrapArray::class.java) {
-                    val s = current as WrapList<Any>
+                } else if (current is WrapArray<*>) {
+                    val s = current as WrapArray<Any>
                     for (value in s.values) {
                         out(outputPtr++, value)
                     }
@@ -109,13 +108,13 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
                     } else {
                         current = null
                     }
-                } else if (javaClass === Concat::class.java) {
+                } else if (current is Concat) {
                     val c = current as Concat
                     current = c.left
                     rights[stackPtr] = c.right
                     stackPtr += 1
                 } else {
-                    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") out(outputPtr++, current)
+                    out(outputPtr++, current)
 
                     if (stackPtr > 0) {
                         stackPtr -= 1

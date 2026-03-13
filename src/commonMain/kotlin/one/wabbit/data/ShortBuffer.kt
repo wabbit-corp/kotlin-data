@@ -1,5 +1,7 @@
 package one.wabbit.data
 
+import kotlin.jvm.JvmField
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer

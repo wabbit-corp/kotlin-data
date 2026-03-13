@@ -70,9 +70,8 @@ class Cord(private val value: Any, val length: Int, private val depth: Int) {
             var outputPtr = 0
 
             while (current != null) {
-                if (current.javaClass === java.lang.Character::class.java) {
-                    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") val s = current as Char
-                    out[outputPtr++] = s
+                if (current is Char) {
+                    out[outputPtr++] = current
 
                     if (stackPtr > 0) {
                         stackPtr -= 1
@@ -80,9 +79,11 @@ class Cord(private val value: Any, val length: Int, private val depth: Int) {
                     } else {
                         current = null
                     }
-                } else if (current.javaClass === String::class.java) {
-                    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") val s = current as java.lang.String
-                    s.getChars(0, s.length, out, outputPtr)
+                } else if (current is String) {
+                    val s = current
+                    for (i in s.indices) {
+                        out[outputPtr + i] = s[i]
+                    }
                     outputPtr += s.length
                     if (stackPtr > 0) {
                         stackPtr -= 1

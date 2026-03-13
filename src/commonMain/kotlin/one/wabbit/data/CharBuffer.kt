@@ -1,5 +1,7 @@
 package one.wabbit.data
 
+import kotlin.jvm.JvmField
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -8,17 +10,17 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Serializable(with = BooleanBuffer.TypeSerializer::class)
-class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
+@Serializable(with = CharBuffer.TypeSerializer::class)
+class CharBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
     // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
 
-    @JvmField internal var buffer = BooleanArray(capacity)
+    @JvmField internal var buffer = CharArray(capacity)
 
-    constructor(values: BooleanArray) : this(values.size) {
+    constructor(values: CharArray) : this(values.size) {
         values.copyInto(buffer)
         usedSize = values.size
     }
@@ -66,7 +68,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is BooleanBuffer) return false
+        if (other !is CharBuffer) return false
         if (usedSize != other.usedSize) return false
         for (i in 0 until usedSize) {
             if (buffer[i] != other.buffer[i]) return false
@@ -82,16 +84,16 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    class TypeSerializer : KSerializer<BooleanBuffer> {
-        private val listSerializer = ListSerializer(Boolean.serializer())
+    class TypeSerializer : KSerializer<CharBuffer> {
+        private val listSerializer = ListSerializer(Char.serializer())
         override val descriptor: SerialDescriptor = listSerializer.descriptor
 
-        override fun serialize(encoder: Encoder, value: BooleanBuffer) {
+        override fun serialize(encoder: Encoder, value: CharBuffer) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): BooleanBuffer =
-            BooleanBuffer(decoder.decodeSerializableValue(listSerializer).toBooleanArray())
+        override fun deserialize(decoder: Decoder): CharBuffer =
+            CharBuffer(decoder.decodeSerializableValue(listSerializer).toCharArray())
     }
 
     // /////////////////////////////////////////////////////////////////////////
@@ -99,7 +101,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
 
     override fun toString(): String =
-        "BooleanBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
+        "CharBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
     // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
@@ -108,7 +110,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
             val newCapacity = maxOf(this.capacity * 3 / 2, requiredCapacity)
-            val newBuffer = BooleanArray(newCapacity)
+            val newBuffer = CharArray(newCapacity)
             buffer.copyInto(newBuffer, destinationOffset = 0, startIndex = 0, endIndex = usedSize)
             this.buffer = newBuffer
             this.capacity = newCapacity
@@ -137,20 +139,20 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun isNotEmpty(): Boolean = usedSize != 0
 
-    fun contains(value: Boolean): Boolean = indexOf(value) != -1
+    fun contains(value: Char): Boolean = indexOf(value) != -1
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    fun mapInPlace(transform: (Boolean) -> Boolean): BooleanBuffer {
+    fun mapInPlace(transform: (Char) -> Char): CharBuffer {
         for (i in 0 until size) {
             buffer[i] = transform(buffer[i])
         }
         return this
     }
 
-    fun filterInPlace(predicate: (Boolean) -> Boolean): BooleanBuffer {
+    fun filterInPlace(predicate: (Char) -> Boolean): CharBuffer {
         var writeIndex = 0
         for (readIndex in 0 until size) {
             if (predicate(buffer[readIndex])) {
@@ -165,7 +167,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun removeIf(predicate: (Boolean) -> Boolean): Boolean {
+    fun removeIf(predicate: (Char) -> Boolean): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
             if (!predicate(buffer[readIndex])) {
@@ -177,7 +179,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    fun removeAll(value: Boolean): Boolean {
+    fun removeAll(value: Char): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
             if (buffer[readIndex] != value) {
@@ -193,13 +195,13 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    fun forEach(action: (Boolean) -> Unit) {
+    fun forEach(action: (Char) -> Unit) {
         for (i in 0 until size) action(buffer[i])
     }
 
-    fun partition(predicate: (Boolean) -> Boolean): Pair<BooleanBuffer, BooleanBuffer> {
-        val matching = BooleanBuffer()
-        val nonMatching = BooleanBuffer()
+    fun partition(predicate: (Char) -> Boolean): Pair<CharBuffer, CharBuffer> {
+        val matching = CharBuffer()
+        val nonMatching = CharBuffer()
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) {
                 matching.add(buffer[i])
@@ -210,7 +212,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return matching to nonMatching
     }
 
-    fun reduce(operation: (Boolean, Boolean) -> Boolean): Boolean {
+    fun reduce(operation: (Char, Char) -> Char): Char {
         require(usedSize > 0) { "Empty buffer cannot be reduced." }
         var accumulator = buffer[0]
         for (i in 1 until usedSize) {
@@ -219,28 +221,28 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    fun any(predicate: (Boolean) -> Boolean): Boolean {
+    fun any(predicate: (Char) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return true
         }
         return false
     }
 
-    fun all(predicate: (Boolean) -> Boolean): Boolean {
+    fun all(predicate: (Char) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (!predicate(buffer[i])) return false
         }
         return true
     }
 
-    fun none(predicate: (Boolean) -> Boolean): Boolean {
+    fun none(predicate: (Char) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return false
         }
         return true
     }
 
-    fun count(predicate: (Boolean) -> Boolean): Int {
+    fun count(predicate: (Char) -> Boolean): Int {
         var count = 0
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) count++
@@ -248,44 +250,44 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return count
     }
 
-    fun <State> fold(initial: State, operation: (State, Boolean) -> State): State =
+    fun <State> fold(initial: State, operation: (State, Char) -> State): State =
         foldLeft(initial, operation)
 
-    fun toMutableList(): MutableList<Boolean> {
-        val result = mutableListOf<Boolean>()
+    fun toMutableList(): MutableList<Char> {
+        val result = mutableListOf<Char>()
         for (i in 0 until usedSize) {
             result.add(buffer[i])
         }
         return result
     }
 
-    fun toList(): List<Boolean> = toMutableList()
+    fun toList(): List<Char> = toMutableList()
 
-    fun toMutableSet(): MutableSet<Boolean> {
-        val result = mutableSetOf<Boolean>()
+    fun toMutableSet(): MutableSet<Char> {
+        val result = mutableSetOf<Char>()
         for (i in 0 until usedSize) {
             result.add(buffer[i])
         }
         return result
     }
 
-    fun toBooleanArray(): BooleanArray = buffer.copyOfRange(0, size)
+    fun toCharArray(): CharArray = buffer.copyOfRange(0, size)
 
-    fun toBooleanBuffer(): BooleanBuffer {
-        val copy = BooleanBuffer(usedSize)
+    fun toCharBuffer(): CharBuffer {
+        val copy = CharBuffer(usedSize)
         buffer.copyInto(copy.buffer, 0, 0, usedSize)
         copy.usedSize = usedSize
         return copy
     }
 
-    fun copy(): BooleanBuffer = toBooleanBuffer()
+    fun copy(): CharBuffer = toCharBuffer()
 
-    class Iterator(private val buf: BooleanBuffer) : kotlin.collections.Iterator<Boolean> {
+    class Iterator(private val buf: CharBuffer) : kotlin.collections.Iterator<Char> {
         private var index = 0
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
-        override fun next(): Boolean = buf.buffer[index++]
+        override fun next(): Char = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
@@ -294,14 +296,13 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    class MutableIterator(private val buf: BooleanBuffer) :
-        kotlin.collections.MutableIterator<Boolean> {
+    class MutableIterator(private val buf: CharBuffer) : kotlin.collections.MutableIterator<Char> {
         private var index = 0
         private var lastReturned = -1
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
-        override fun next(): Boolean {
+        override fun next(): Char {
             if (index >= buf.usedSize) throw NoSuchElementException()
             lastReturned = index
             return buf.buffer[index++]
@@ -321,16 +322,16 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun find(predicate: (Boolean) -> Boolean): Boolean? {
+    fun find(predicate: (Char) -> Boolean): Char? {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return buffer[i]
         }
         return null
     }
 
-    fun distinct(): BooleanBuffer {
-        val seen = mutableSetOf<Boolean>()
-        val result = BooleanBuffer()
+    fun distinct(): CharBuffer {
+        val seen = mutableSetOf<Char>()
+        val result = CharBuffer()
         for (i in 0 until usedSize) {
             if (seen.add(buffer[i])) {
                 result.add(buffer[i])
@@ -340,72 +341,84 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     // /////////////////////////////////////////////////////////////////////////
+    // Indexable C + Comparable T
+    // /////////////////////////////////////////////////////////////////////////
+
+    fun binarySearch(value: Char): Int = buffer.binarySearch(value, 0, size)
+
+    fun sorted(): CharBuffer {
+        val copy = this.copy()
+        copy.sort()
+        return copy
+    }
+
+    // /////////////////////////////////////////////////////////////////////////
     // Indexable C
     // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Boolean = buffer[normalizeAccessIndex(index)]
+    operator fun get(index: Int): Char = buffer[normalizeAccessIndex(index)]
 
-    fun getOrNull(index: Int): Boolean? {
+    fun getOrNull(index: Int): Char? {
         // Handle negative indices without throwing.
         val idx = if (index < 0) usedSize + index else index
         return if (idx in 0 until usedSize) buffer[idx] else null
     }
 
-    inline fun getOrElse(index: Int, defaultValue: () -> Boolean): Boolean {
+    inline fun getOrElse(index: Int, defaultValue: () -> Char): Char {
         val value = getOrNull(index)
         return value ?: defaultValue()
     }
 
-    fun first(): Boolean =
+    fun first(): Char =
         if (usedSize > 0) buffer[0] else throw NoSuchElementException("Buffer is empty")
 
-    fun firstOrNull(): Boolean? = if (usedSize > 0) buffer[0] else null
+    fun firstOrNull(): Char? = if (usedSize > 0) buffer[0] else null
 
-    fun last(): Boolean =
+    fun last(): Char =
         if (usedSize > 0) buffer[usedSize - 1] else throw NoSuchElementException("Buffer is empty")
 
-    fun lastOrNull(): Boolean? = if (usedSize > 0) buffer[usedSize - 1] else null
+    fun lastOrNull(): Char? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Boolean) -> Boolean): Boolean? = find(predicate)
+    fun findFirst(predicate: (Char) -> Boolean): Char? = find(predicate)
 
-    fun findLast(predicate: (Boolean) -> Boolean): Boolean? {
+    fun findLast(predicate: (Char) -> Boolean): Char? {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return buffer[i]
         }
         return null
     }
 
-    fun indexOf(value: Boolean): Int {
+    fun indexOf(value: Char): Int {
         for (i in 0 until size) {
             if (buffer[i] == value) return i
         }
         return -1
     }
 
-    fun indexOfLast(value: Boolean): Int {
+    fun indexOfLast(value: Char): Int {
         for (i in size - 1 downTo 0) {
             if (buffer[i] == value) return i
         }
         return -1
     }
 
-    fun indexWhere(predicate: (Boolean) -> Boolean): Int {
+    fun indexWhere(predicate: (Char) -> Boolean): Int {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return i
         }
         return -1
     }
 
-    fun indexOfFirst(predicate: (Boolean) -> Boolean): Int = indexWhere(predicate)
+    fun indexOfFirst(predicate: (Char) -> Boolean): Int = indexWhere(predicate)
 
-    fun indexOfLast(predicate: (Boolean) -> Boolean): Int {
+    fun indexOfLast(predicate: (Char) -> Boolean): Int {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return i
         }
         return -1
     }
 
-    fun indicesWhere(predicate: (Boolean) -> Boolean): IntBuffer {
+    fun indicesWhere(predicate: (Char) -> Boolean): IntBuffer {
         val indices = IntBuffer()
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) indices.add(i)
@@ -413,11 +426,11 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return indices
     }
 
-    fun forEachIndexed(action: (index: Int, value: Boolean) -> Unit) {
+    fun forEachIndexed(action: (index: Int, value: Char) -> Unit) {
         for (i in 0 until size) action(i, buffer[i])
     }
 
-    fun <State> foldLeft(initial: State, operation: (State, Boolean) -> State): State {
+    fun <State> foldLeft(initial: State, operation: (State, Char) -> State): State {
         var accumulator = initial
         for (i in 0 until usedSize) {
             accumulator = operation(accumulator, buffer[i])
@@ -425,7 +438,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    fun <State> foldRight(initial: State, operation: (Boolean, State) -> State): State {
+    fun <State> foldRight(initial: State, operation: (Char, State) -> State): State {
         var accumulator = initial
         for (i in usedSize - 1 downTo 0) {
             accumulator = operation(buffer[i], accumulator)
@@ -437,25 +450,25 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    operator fun set(index: Int, value: Boolean) {
+    operator fun set(index: Int, value: Char) {
         buffer[normalizeAccessIndex(index)] = value
     }
 
-    fun fill(value: Boolean, fromIndex: Int = 0, toIndex: Int = usedSize) {
+    fun fill(value: Char, fromIndex: Int = 0, toIndex: Int = usedSize) {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         for (i in start until end) {
             buffer[i] = value
         }
     }
 
-    operator fun set(range: IntRange, value: Boolean) {
+    operator fun set(range: IntRange, value: Char) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         for (i in start until end) {
             buffer[i] = value
         }
     }
 
-    operator fun set(range: IntRange, values: BooleanArray) {
+    operator fun set(range: IntRange, values: CharArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
         require(rangeSize == values.size) {
@@ -466,7 +479,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun setRange(
         fromIndex: Int,
-        values: BooleanArray,
+        values: CharArray,
         startIndex: Int = 0,
         endIndex: Int = values.size,
     ) {
@@ -504,7 +517,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    fun insertAt(index: Int, value: Boolean) {
+    fun insertAt(index: Int, value: Char) {
         val idx = normalizeInsertIndex(index)
         ensureCapacity(usedSize + 1)
         if (idx < usedSize) {
@@ -514,17 +527,12 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize++
     }
 
-    fun add(value: Boolean) {
+    fun add(value: Char) {
         ensureCapacity(usedSize + 1)
         buffer[usedSize++] = value
     }
 
-    fun insertAt(
-        index: Int,
-        values: BooleanArray,
-        startIndex: Int = 0,
-        endIndex: Int = values.size,
-    ) {
+    fun insertAt(index: Int, values: CharArray, startIndex: Int = 0, endIndex: Int = values.size) {
         val idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -537,12 +545,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(
-        index: Int,
-        values: List<Boolean>,
-        startIndex: Int = 0,
-        endIndex: Int = values.size,
-    ) {
+    fun insertAt(index: Int, values: List<Char>, startIndex: Int = 0, endIndex: Int = values.size) {
         var idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -557,7 +560,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: Collection<Boolean>) {
+    fun insertAt(index: Int, values: Collection<Char>) {
         var idx = normalizeInsertIndex(index)
         val addSize = values.size
         ensureCapacity(usedSize + addSize)
@@ -570,16 +573,16 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, value: BooleanBuffer) {
+    fun insertAt(index: Int, value: CharBuffer) {
         insertAt(index, value.buffer, 0, value.usedSize)
     }
 
-    fun insertAt(index: Int, values: BooleanDeque) {
-        // Assuming BooleanDeque has a toBooleanArray() method.
-        insertAt(index, values.toBooleanArray())
+    fun insertAt(index: Int, values: CharDeque) {
+        // Assuming CharDeque has a toCharArray() method.
+        insertAt(index, values.toCharArray())
     }
 
-    fun removeAt(index: Int): Boolean {
+    fun removeAt(index: Int): Char {
         val idx = normalizeAccessIndex(index)
         val value = buffer[idx]
         if (idx < usedSize - 1) {
@@ -589,28 +592,28 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return value
     }
 
-    fun removeFirst(): Boolean {
+    fun removeFirst(): Char {
         require(usedSize > 0) { "Buffer is empty." }
         return removeAt(0)
     }
 
-    fun removeLast(): Boolean {
+    fun removeLast(): Char {
         require(usedSize > 0) { "Buffer is empty." }
         return removeAt(usedSize - 1)
     }
 
-    class ListIterator(private val buf: BooleanBuffer) : kotlin.collections.ListIterator<Boolean> {
+    class ListIterator(private val buf: CharBuffer) : kotlin.collections.ListIterator<Char> {
         private var index = 0
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
         override fun hasPrevious(): Boolean = index > 0
 
-        override fun next(): Boolean = buf.buffer[index++]
+        override fun next(): Char = buf.buffer[index++]
 
         override fun nextIndex(): Int = index
 
-        override fun previous(): Boolean = buf.buffer[--index]
+        override fun previous(): Char = buf.buffer[--index]
 
         override fun previousIndex(): Int = index - 1
     }
@@ -618,27 +621,108 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     fun listIterator(): ListIterator = ListIterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
+    // Indexable C + Mutable C + Comparable T
+    // /////////////////////////////////////////////////////////////////////////
+
+    fun sort() {
+        buffer.sort(0, size)
+    }
+
+    fun sortDescending() {
+        buffer.sortDescending(0, size)
+    }
+
+    fun sortedDescending(): CharBuffer {
+        val copy = this.copy()
+        copy.sort()
+        copy.reverse()
+        return copy
+    }
+
+    fun swap(index1: Int, index2: Int) {
+        val idx1 = normalizeAccessIndex(index1)
+        val idx2 = normalizeAccessIndex(index2)
+        val temp = buffer[idx1]
+        buffer[idx1] = buffer[idx2]
+        buffer[idx2] = temp
+    }
+
+    fun extractSliceAsArray(from: Int, to: Int): CharArray {
+        val (start, end) = normalizeRange(from, to)
+        val result = buffer.copyOfRange(start, end)
+        if (end < usedSize) {
+            buffer.copyInto(buffer, start, end, usedSize)
+        }
+        usedSize -= (end - start)
+        return result
+    }
+
+    fun copyRangeAsBuffer(fromIndex: Int, toIndex: Int): CharBuffer {
+        val (start, end) = normalizeRange(fromIndex, toIndex)
+        val newBuffer = CharBuffer(end - start)
+        buffer.copyInto(newBuffer.buffer, 0, start, end)
+        newBuffer.usedSize = end - start
+        return newBuffer
+    }
+
+    fun removeRange(fromIndex: Int, toIndex: Int) {
+        val (start, end) = normalizeRange(fromIndex, toIndex)
+        val rangeSize = end - start
+        if (rangeSize <= 0) return
+        if (end < usedSize) {
+            buffer.copyInto(buffer, start, end, usedSize)
+        }
+        usedSize -= rangeSize
+    }
+
+    // /////////////////////////////////////////////////////////////////////////
+    // Iterable C + Comparable T
+    // /////////////////////////////////////////////////////////////////////////
+
+    fun minOrNull(): Char? {
+        if (usedSize == 0) return null
+        var minValue = buffer[0]
+        for (i in 1 until usedSize) {
+            if (buffer[i] < minValue) minValue = buffer[i]
+        }
+        return minValue
+    }
+
+    fun min(): Char = minOrNull() ?: throw NoSuchElementException("Buffer is empty")
+
+    fun maxOrNull(): Char? {
+        if (usedSize == 0) return null
+        var maxValue = buffer[0]
+        for (i in 1 until usedSize) {
+            if (buffer[i] > maxValue) maxValue = buffer[i]
+        }
+        return maxValue
+    }
+
+    fun max(): Char = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
+
+    // /////////////////////////////////////////////////////////////////////////
     // Companion Object
     // /////////////////////////////////////////////////////////////////////////
 
     companion object {
-        fun empty(): BooleanBuffer = BooleanBuffer()
+        fun empty(): CharBuffer = CharBuffer()
 
-        fun withCapacity(capacity: Int): BooleanBuffer = BooleanBuffer(capacity)
+        fun withCapacity(capacity: Int): CharBuffer = CharBuffer(capacity)
 
-        fun generate(size: Int, init: (Int) -> Boolean): BooleanBuffer {
-            val buffer = BooleanBuffer(size)
+        fun generate(size: Int, init: (Int) -> Char): CharBuffer {
+            val buffer = CharBuffer(size)
             for (i in 0 until size) {
                 buffer.add(init(i))
             }
             return buffer
         }
 
-        fun concat(vararg buffers: BooleanBuffer): BooleanBuffer {
+        fun concat(vararg buffers: CharBuffer): CharBuffer {
             // Pre-calculate the total number of elements
             val totalSize = buffers.sumOf { it.size }
             // Allocate the new buffer with the exact required capacity
-            val result = BooleanBuffer(totalSize)
+            val result = CharBuffer(totalSize)
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
@@ -655,24 +739,24 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
             return result
         }
 
-        fun from(values: Collection<Boolean>): BooleanBuffer {
-            val buffer = BooleanBuffer(values.size)
+        fun from(values: Collection<Char>): CharBuffer {
+            val buffer = CharBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
 
-        fun from(values: BooleanArray): BooleanBuffer = BooleanBuffer(values)
+        fun from(values: CharArray): CharBuffer = CharBuffer(values)
 
-        fun from(values: BooleanBuffer): BooleanBuffer = values.copy()
+        fun from(values: CharBuffer): CharBuffer = values.copy()
 
-        fun from(values: BooleanDeque): BooleanBuffer = BooleanBuffer(values.toBooleanArray())
+        fun from(values: CharDeque): CharBuffer = CharBuffer(values.toCharArray())
 
-        fun of(vararg values: Boolean): BooleanBuffer {
-            val buffer = BooleanBuffer(values.size)
+        fun of(vararg values: Char): CharBuffer {
+            val buffer = CharBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
     }
 }
 
-fun booleanBufferOf(vararg values: Boolean): BooleanBuffer = BooleanBuffer.of(*values)
+fun charBufferOf(vararg values: Char): CharBuffer = CharBuffer.of(*values)

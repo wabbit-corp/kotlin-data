@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlin.jvm.JvmField
 
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = ArrMap.TypeSerializer::class)
@@ -84,11 +85,11 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
         }
 
         val newArr = arrayOfNulls<Any?>(2 * size + 2)
-        System.arraycopy(unsafe, 0, newArr, 0, 2 * size)
+        unsafe.copyInto(newArr, endIndex = 2 * size)
         newArr[2 * size] = key
         newArr[2 * size + 1] = value
         val newHashes = IntArray(size + 1)
-        System.arraycopy(hashes, 0, newHashes, 0, size)
+        hashes.copyInto(newHashes, endIndex = size)
         newHashes[size] = keyHash
         return ArrMap(newArr, newHashes)
     }
@@ -198,18 +199,18 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
         return result
     }
 
-    override fun equals(that: Any?): Boolean {
-        if (this === that) return true
-        if (that is ArrMap<*, *>) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other is ArrMap<*, *>) {
             val thisHashes = hashes
-            val thatHashes = that.hashes
+            val thatHashes = other.hashes
             val thisSize = hashes.size
-            val thatSize = that.hashes.size
+            val thatSize = other.hashes.size
             if (thisSize != thatSize) return false
-            if (hashCode() != that.hashCode()) return false
+            if (hashCode() != other.hashCode()) return false
             // TODO: Optimize this.
             val thisUnsafe = unsafe
-            val thatUnsafe = that.unsafe
+            val thatUnsafe = other.unsafe
             var i = 0
             while (i < thisSize) {
                 var j = 0

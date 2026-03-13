@@ -1,5 +1,7 @@
 package one.wabbit.data
 
+import kotlin.jvm.JvmField
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -8,17 +10,17 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Serializable(with = IntBuffer.TypeSerializer::class)
-class IntBuffer(@JvmField internal var capacity: Int = 16) {
+@Serializable(with = DoubleBuffer.TypeSerializer::class)
+class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
     // Constructors & Core Fields
     // /////////////////////////////////////////////////////////////////////////
 
     @JvmField internal var usedSize: Int = 0
 
-    @JvmField internal var buffer = IntArray(capacity)
+    @JvmField internal var buffer = DoubleArray(capacity)
 
-    constructor(values: IntArray) : this(values.size) {
+    constructor(values: DoubleArray) : this(values.size) {
         values.copyInto(buffer)
         usedSize = values.size
     }
@@ -66,7 +68,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is IntBuffer) return false
+        if (other !is DoubleBuffer) return false
         if (usedSize != other.usedSize) return false
         for (i in 0 until usedSize) {
             if (buffer[i] != other.buffer[i]) return false
@@ -82,16 +84,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    class TypeSerializer : KSerializer<IntBuffer> {
-        private val listSerializer = ListSerializer(Int.serializer())
+    class TypeSerializer : KSerializer<DoubleBuffer> {
+        private val listSerializer = ListSerializer(Double.serializer())
         override val descriptor: SerialDescriptor = listSerializer.descriptor
 
-        override fun serialize(encoder: Encoder, value: IntBuffer) {
+        override fun serialize(encoder: Encoder, value: DoubleBuffer) {
             encoder.encodeSerializableValue(listSerializer, value.toList())
         }
 
-        override fun deserialize(decoder: Decoder): IntBuffer =
-            IntBuffer(decoder.decodeSerializableValue(listSerializer).toIntArray())
+        override fun deserialize(decoder: Decoder): DoubleBuffer =
+            DoubleBuffer(decoder.decodeSerializableValue(listSerializer).toDoubleArray())
     }
 
     // /////////////////////////////////////////////////////////////////////////
@@ -99,7 +101,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
 
     override fun toString(): String =
-        "IntBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
+        "DoubleBuffer(${buffer.copyOfRange(0, usedSize).joinToString(", ")})"
 
     // /////////////////////////////////////////////////////////////////////////
     // Low-level Buffer Operations
@@ -108,7 +110,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
             val newCapacity = maxOf(this.capacity * 3 / 2, requiredCapacity)
-            val newBuffer = IntArray(newCapacity)
+            val newBuffer = DoubleArray(newCapacity)
             buffer.copyInto(newBuffer, destinationOffset = 0, startIndex = 0, endIndex = usedSize)
             this.buffer = newBuffer
             this.capacity = newCapacity
@@ -137,20 +139,20 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun isNotEmpty(): Boolean = usedSize != 0
 
-    fun contains(value: Int): Boolean = indexOf(value) != -1
+    fun contains(value: Double): Boolean = indexOf(value) != -1
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    fun mapInPlace(transform: (Int) -> Int): IntBuffer {
+    fun mapInPlace(transform: (Double) -> Double): DoubleBuffer {
         for (i in 0 until size) {
             buffer[i] = transform(buffer[i])
         }
         return this
     }
 
-    fun filterInPlace(predicate: (Int) -> Boolean): IntBuffer {
+    fun filterInPlace(predicate: (Double) -> Boolean): DoubleBuffer {
         var writeIndex = 0
         for (readIndex in 0 until size) {
             if (predicate(buffer[readIndex])) {
@@ -165,7 +167,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun removeIf(predicate: (Int) -> Boolean): Boolean {
+    fun removeIf(predicate: (Double) -> Boolean): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
             if (!predicate(buffer[readIndex])) {
@@ -177,7 +179,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    fun removeAll(value: Int): Boolean {
+    fun removeAll(value: Double): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
             if (buffer[readIndex] != value) {
@@ -193,13 +195,13 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    fun forEach(action: (Int) -> Unit) {
+    fun forEach(action: (Double) -> Unit) {
         for (i in 0 until size) action(buffer[i])
     }
 
-    fun partition(predicate: (Int) -> Boolean): Pair<IntBuffer, IntBuffer> {
-        val matching = IntBuffer()
-        val nonMatching = IntBuffer()
+    fun partition(predicate: (Double) -> Boolean): Pair<DoubleBuffer, DoubleBuffer> {
+        val matching = DoubleBuffer()
+        val nonMatching = DoubleBuffer()
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) {
                 matching.add(buffer[i])
@@ -210,7 +212,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return matching to nonMatching
     }
 
-    fun reduce(operation: (Int, Int) -> Int): Int {
+    fun reduce(operation: (Double, Double) -> Double): Double {
         require(usedSize > 0) { "Empty buffer cannot be reduced." }
         var accumulator = buffer[0]
         for (i in 1 until usedSize) {
@@ -219,28 +221,28 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    fun any(predicate: (Int) -> Boolean): Boolean {
+    fun any(predicate: (Double) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return true
         }
         return false
     }
 
-    fun all(predicate: (Int) -> Boolean): Boolean {
+    fun all(predicate: (Double) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (!predicate(buffer[i])) return false
         }
         return true
     }
 
-    fun none(predicate: (Int) -> Boolean): Boolean {
+    fun none(predicate: (Double) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return false
         }
         return true
     }
 
-    fun count(predicate: (Int) -> Boolean): Int {
+    fun count(predicate: (Double) -> Boolean): Int {
         var count = 0
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) count++
@@ -248,44 +250,44 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return count
     }
 
-    fun <State> fold(initial: State, operation: (State, Int) -> State): State =
+    fun <State> fold(initial: State, operation: (State, Double) -> State): State =
         foldLeft(initial, operation)
 
-    fun toMutableList(): MutableList<Int> {
-        val result = mutableListOf<Int>()
+    fun toMutableList(): MutableList<Double> {
+        val result = mutableListOf<Double>()
         for (i in 0 until usedSize) {
             result.add(buffer[i])
         }
         return result
     }
 
-    fun toList(): List<Int> = toMutableList()
+    fun toList(): List<Double> = toMutableList()
 
-    fun toMutableSet(): MutableSet<Int> {
-        val result = mutableSetOf<Int>()
+    fun toMutableSet(): MutableSet<Double> {
+        val result = mutableSetOf<Double>()
         for (i in 0 until usedSize) {
             result.add(buffer[i])
         }
         return result
     }
 
-    fun toIntArray(): IntArray = buffer.copyOfRange(0, size)
+    fun toDoubleArray(): DoubleArray = buffer.copyOfRange(0, size)
 
-    fun toIntBuffer(): IntBuffer {
-        val copy = IntBuffer(usedSize)
+    fun toDoubleBuffer(): DoubleBuffer {
+        val copy = DoubleBuffer(usedSize)
         buffer.copyInto(copy.buffer, 0, 0, usedSize)
         copy.usedSize = usedSize
         return copy
     }
 
-    fun copy(): IntBuffer = toIntBuffer()
+    fun copy(): DoubleBuffer = toDoubleBuffer()
 
-    class Iterator(private val buf: IntBuffer) : kotlin.collections.Iterator<Int> {
+    class Iterator(private val buf: DoubleBuffer) : kotlin.collections.Iterator<Double> {
         private var index = 0
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
-        override fun next(): Int = buf.buffer[index++]
+        override fun next(): Double = buf.buffer[index++]
     }
 
     operator fun iterator(): Iterator = Iterator(this)
@@ -294,13 +296,14 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    class MutableIterator(private val buf: IntBuffer) : kotlin.collections.MutableIterator<Int> {
+    class MutableIterator(private val buf: DoubleBuffer) :
+        kotlin.collections.MutableIterator<Double> {
         private var index = 0
         private var lastReturned = -1
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
-        override fun next(): Int {
+        override fun next(): Double {
             if (index >= buf.usedSize) throw NoSuchElementException()
             lastReturned = index
             return buf.buffer[index++]
@@ -320,16 +323,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun find(predicate: (Int) -> Boolean): Int? {
+    fun find(predicate: (Double) -> Boolean): Double? {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return buffer[i]
         }
         return null
     }
 
-    fun distinct(): IntBuffer {
-        val seen = mutableSetOf<Int>()
-        val result = IntBuffer()
+    fun distinct(): DoubleBuffer {
+        val seen = mutableSetOf<Double>()
+        val result = DoubleBuffer()
         for (i in 0 until usedSize) {
             if (seen.add(buffer[i])) {
                 result.add(buffer[i])
@@ -342,9 +345,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Int): Int = buffer.binarySearch(value, 0, size)
+    fun binarySearch(value: Double): Int = buffer.binarySearch(value, 0, size)
 
-    fun sorted(): IntBuffer {
+    fun sorted(): DoubleBuffer {
         val copy = this.copy()
         copy.sort()
         return copy
@@ -354,69 +357,69 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C
     // /////////////////////////////////////////////////////////////////////////
 
-    operator fun get(index: Int): Int = buffer[normalizeAccessIndex(index)]
+    operator fun get(index: Int): Double = buffer[normalizeAccessIndex(index)]
 
-    fun getOrNull(index: Int): Int? {
+    fun getOrNull(index: Int): Double? {
         // Handle negative indices without throwing.
         val idx = if (index < 0) usedSize + index else index
         return if (idx in 0 until usedSize) buffer[idx] else null
     }
 
-    inline fun getOrElse(index: Int, defaultValue: () -> Int): Int {
+    inline fun getOrElse(index: Int, defaultValue: () -> Double): Double {
         val value = getOrNull(index)
         return value ?: defaultValue()
     }
 
-    fun first(): Int =
+    fun first(): Double =
         if (usedSize > 0) buffer[0] else throw NoSuchElementException("Buffer is empty")
 
-    fun firstOrNull(): Int? = if (usedSize > 0) buffer[0] else null
+    fun firstOrNull(): Double? = if (usedSize > 0) buffer[0] else null
 
-    fun last(): Int =
+    fun last(): Double =
         if (usedSize > 0) buffer[usedSize - 1] else throw NoSuchElementException("Buffer is empty")
 
-    fun lastOrNull(): Int? = if (usedSize > 0) buffer[usedSize - 1] else null
+    fun lastOrNull(): Double? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    fun findFirst(predicate: (Int) -> Boolean): Int? = find(predicate)
+    fun findFirst(predicate: (Double) -> Boolean): Double? = find(predicate)
 
-    fun findLast(predicate: (Int) -> Boolean): Int? {
+    fun findLast(predicate: (Double) -> Boolean): Double? {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return buffer[i]
         }
         return null
     }
 
-    fun indexOf(value: Int): Int {
+    fun indexOf(value: Double): Int {
         for (i in 0 until size) {
             if (buffer[i] == value) return i
         }
         return -1
     }
 
-    fun indexOfLast(value: Int): Int {
+    fun indexOfLast(value: Double): Int {
         for (i in size - 1 downTo 0) {
             if (buffer[i] == value) return i
         }
         return -1
     }
 
-    fun indexWhere(predicate: (Int) -> Boolean): Int {
+    fun indexWhere(predicate: (Double) -> Boolean): Int {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return i
         }
         return -1
     }
 
-    fun indexOfFirst(predicate: (Int) -> Boolean): Int = indexWhere(predicate)
+    fun indexOfFirst(predicate: (Double) -> Boolean): Int = indexWhere(predicate)
 
-    fun indexOfLast(predicate: (Int) -> Boolean): Int {
+    fun indexOfLast(predicate: (Double) -> Boolean): Int {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return i
         }
         return -1
     }
 
-    fun indicesWhere(predicate: (Int) -> Boolean): IntBuffer {
+    fun indicesWhere(predicate: (Double) -> Boolean): IntBuffer {
         val indices = IntBuffer()
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) indices.add(i)
@@ -424,11 +427,11 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return indices
     }
 
-    fun forEachIndexed(action: (index: Int, value: Int) -> Unit) {
+    fun forEachIndexed(action: (index: Int, value: Double) -> Unit) {
         for (i in 0 until size) action(i, buffer[i])
     }
 
-    fun <State> foldLeft(initial: State, operation: (State, Int) -> State): State {
+    fun <State> foldLeft(initial: State, operation: (State, Double) -> State): State {
         var accumulator = initial
         for (i in 0 until usedSize) {
             accumulator = operation(accumulator, buffer[i])
@@ -436,7 +439,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    fun <State> foldRight(initial: State, operation: (Int, State) -> State): State {
+    fun <State> foldRight(initial: State, operation: (Double, State) -> State): State {
         var accumulator = initial
         for (i in usedSize - 1 downTo 0) {
             accumulator = operation(buffer[i], accumulator)
@@ -448,25 +451,25 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    operator fun set(index: Int, value: Int) {
+    operator fun set(index: Int, value: Double) {
         buffer[normalizeAccessIndex(index)] = value
     }
 
-    fun fill(value: Int, fromIndex: Int = 0, toIndex: Int = usedSize) {
+    fun fill(value: Double, fromIndex: Int = 0, toIndex: Int = usedSize) {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         for (i in start until end) {
             buffer[i] = value
         }
     }
 
-    operator fun set(range: IntRange, value: Int) {
+    operator fun set(range: IntRange, value: Double) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         for (i in start until end) {
             buffer[i] = value
         }
     }
 
-    operator fun set(range: IntRange, values: IntArray) {
+    operator fun set(range: IntRange, values: DoubleArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
         require(rangeSize == values.size) {
@@ -477,7 +480,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun setRange(
         fromIndex: Int,
-        values: IntArray,
+        values: DoubleArray,
         startIndex: Int = 0,
         endIndex: Int = values.size,
     ) {
@@ -515,7 +518,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    fun insertAt(index: Int, value: Int) {
+    fun insertAt(index: Int, value: Double) {
         val idx = normalizeInsertIndex(index)
         ensureCapacity(usedSize + 1)
         if (idx < usedSize) {
@@ -525,12 +528,17 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize++
     }
 
-    fun add(value: Int) {
+    fun add(value: Double) {
         ensureCapacity(usedSize + 1)
         buffer[usedSize++] = value
     }
 
-    fun insertAt(index: Int, values: IntArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: DoubleArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -543,7 +551,12 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: List<Int>, startIndex: Int = 0, endIndex: Int = values.size) {
+    fun insertAt(
+        index: Int,
+        values: List<Double>,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         var idx = normalizeInsertIndex(index)
         require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
         require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
@@ -558,7 +571,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, values: Collection<Int>) {
+    fun insertAt(index: Int, values: Collection<Double>) {
         var idx = normalizeInsertIndex(index)
         val addSize = values.size
         ensureCapacity(usedSize + addSize)
@@ -571,16 +584,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    fun insertAt(index: Int, value: IntBuffer) {
+    fun insertAt(index: Int, value: DoubleBuffer) {
         insertAt(index, value.buffer, 0, value.usedSize)
     }
 
-    fun insertAt(index: Int, values: IntDeque) {
-        // Assuming IntDeque has a toIntArray() method.
-        insertAt(index, values.toIntArray())
+    fun insertAt(index: Int, values: DoubleDeque) {
+        // Assuming DoubleDeque has a toDoubleArray() method.
+        insertAt(index, values.toDoubleArray())
     }
 
-    fun removeAt(index: Int): Int {
+    fun removeAt(index: Int): Double {
         val idx = normalizeAccessIndex(index)
         val value = buffer[idx]
         if (idx < usedSize - 1) {
@@ -590,28 +603,28 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return value
     }
 
-    fun removeFirst(): Int {
+    fun removeFirst(): Double {
         require(usedSize > 0) { "Buffer is empty." }
         return removeAt(0)
     }
 
-    fun removeLast(): Int {
+    fun removeLast(): Double {
         require(usedSize > 0) { "Buffer is empty." }
         return removeAt(usedSize - 1)
     }
 
-    class ListIterator(private val buf: IntBuffer) : kotlin.collections.ListIterator<Int> {
+    class ListIterator(private val buf: DoubleBuffer) : kotlin.collections.ListIterator<Double> {
         private var index = 0
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
         override fun hasPrevious(): Boolean = index > 0
 
-        override fun next(): Int = buf.buffer[index++]
+        override fun next(): Double = buf.buffer[index++]
 
         override fun nextIndex(): Int = index
 
-        override fun previous(): Int = buf.buffer[--index]
+        override fun previous(): Double = buf.buffer[--index]
 
         override fun previousIndex(): Int = index - 1
     }
@@ -630,7 +643,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         buffer.sortDescending(0, size)
     }
 
-    fun sortedDescending(): IntBuffer {
+    fun sortedDescending(): DoubleBuffer {
         val copy = this.copy()
         copy.sort()
         copy.reverse()
@@ -645,7 +658,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         buffer[idx2] = temp
     }
 
-    fun extractSliceAsArray(from: Int, to: Int): IntArray {
+    fun extractSliceAsArray(from: Int, to: Int): DoubleArray {
         val (start, end) = normalizeRange(from, to)
         val result = buffer.copyOfRange(start, end)
         if (end < usedSize) {
@@ -655,9 +668,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    fun copyRangeAsBuffer(fromIndex: Int, toIndex: Int): IntBuffer {
+    fun copyRangeAsBuffer(fromIndex: Int, toIndex: Int): DoubleBuffer {
         val (start, end) = normalizeRange(fromIndex, toIndex)
-        val newBuffer = IntBuffer(end - start)
+        val newBuffer = DoubleBuffer(end - start)
         buffer.copyInto(newBuffer.buffer, 0, start, end)
         newBuffer.usedSize = end - start
         return newBuffer
@@ -677,7 +690,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun minOrNull(): Int? {
+    fun minOrNull(): Double? {
         if (usedSize == 0) return null
         var minValue = buffer[0]
         for (i in 1 until usedSize) {
@@ -686,9 +699,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return minValue
     }
 
-    fun min(): Int = minOrNull() ?: throw NoSuchElementException("Buffer is empty")
+    fun min(): Double = minOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
-    fun maxOrNull(): Int? {
+    fun maxOrNull(): Double? {
         if (usedSize == 0) return null
         var maxValue = buffer[0]
         for (i in 1 until usedSize) {
@@ -697,16 +710,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return maxValue
     }
 
-    fun max(): Int = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
+    fun max(): Double = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
     // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun sum(): Int {
-        var s = 0
+    fun sum(): Double {
+        var s = 0.0
         for (i in 0 until usedSize) s += buffer[i]
-        return s.toInt()
+        return s.toDouble()
     }
 
     // /////////////////////////////////////////////////////////////////////////
@@ -714,23 +727,23 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
 
     companion object {
-        fun empty(): IntBuffer = IntBuffer()
+        fun empty(): DoubleBuffer = DoubleBuffer()
 
-        fun withCapacity(capacity: Int): IntBuffer = IntBuffer(capacity)
+        fun withCapacity(capacity: Int): DoubleBuffer = DoubleBuffer(capacity)
 
-        fun generate(size: Int, init: (Int) -> Int): IntBuffer {
-            val buffer = IntBuffer(size)
+        fun generate(size: Int, init: (Int) -> Double): DoubleBuffer {
+            val buffer = DoubleBuffer(size)
             for (i in 0 until size) {
                 buffer.add(init(i))
             }
             return buffer
         }
 
-        fun concat(vararg buffers: IntBuffer): IntBuffer {
+        fun concat(vararg buffers: DoubleBuffer): DoubleBuffer {
             // Pre-calculate the total number of elements
             val totalSize = buffers.sumOf { it.size }
             // Allocate the new buffer with the exact required capacity
-            val result = IntBuffer(totalSize)
+            val result = DoubleBuffer(totalSize)
             var currentPos = 0
             // Copy each buffer's valid elements in one go
             for (buf in buffers) {
@@ -747,24 +760,24 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
             return result
         }
 
-        fun from(values: Collection<Int>): IntBuffer {
-            val buffer = IntBuffer(values.size)
+        fun from(values: Collection<Double>): DoubleBuffer {
+            val buffer = DoubleBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
 
-        fun from(values: IntArray): IntBuffer = IntBuffer(values)
+        fun from(values: DoubleArray): DoubleBuffer = DoubleBuffer(values)
 
-        fun from(values: IntBuffer): IntBuffer = values.copy()
+        fun from(values: DoubleBuffer): DoubleBuffer = values.copy()
 
-        fun from(values: IntDeque): IntBuffer = IntBuffer(values.toIntArray())
+        fun from(values: DoubleDeque): DoubleBuffer = DoubleBuffer(values.toDoubleArray())
 
-        fun of(vararg values: Int): IntBuffer {
-            val buffer = IntBuffer(values.size)
+        fun of(vararg values: Double): DoubleBuffer {
+            val buffer = DoubleBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
     }
 }
 
-fun intBufferOf(vararg values: Int): IntBuffer = IntBuffer.of(*values)
+fun doubleBufferOf(vararg values: Double): DoubleBuffer = DoubleBuffer.of(*values)

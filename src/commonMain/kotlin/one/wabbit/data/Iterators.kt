@@ -135,7 +135,7 @@ fun <T, U> Iterator<T>.map(f: (T) -> U): Iterator<U> {
                 return try {
                     f(value)
                 } catch (e: Throwable) {
-                    if (e is VirtualMachineError) throw e
+                    if (e is Error) throw e
                     haveValue = true
                     this.value = value
                     throw e
@@ -176,8 +176,8 @@ fun <T, U> Iterator<T>.flatMap(f: (T) -> Iterator<U>): Iterator<U> {
                     try {
                         f(t)
                     } catch (e: Throwable) {
-                        // Don’t mutate iterator state on fatal JVM errors.
-                        if (e is VirtualMachineError || e is Error) throw e
+                        // Don’t mutate iterator state on fatal errors.
+                        if (e is Error) throw e
                         retry = true
                         pending = t
                         throw e

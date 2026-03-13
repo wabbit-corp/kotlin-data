@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlin.jvm.JvmField
 
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = Arr.TypeSerializer::class)
@@ -141,8 +142,8 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
 
     operator fun plus(other: Arr<@UnsafeVariance T>): Arr<T> {
         val newArr = arrayOfNulls<Any?>(unsafe.size + other.unsafe.size)
-        System.arraycopy(unsafe, 0, newArr, 0, unsafe.size)
-        System.arraycopy(other.unsafe, 0, newArr, unsafe.size, other.unsafe.size)
+        unsafe.copyInto(newArr, endIndex = unsafe.size)
+        other.unsafe.copyInto(newArr, destinationOffset = unsafe.size, endIndex = other.unsafe.size)
         return Arr(newArr)
     }
 

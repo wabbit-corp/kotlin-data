@@ -2,12 +2,9 @@ package one.wabbit.data
 
 import java.util.Collections
 import java.util.EnumSet
-import java.util.Locale
 import java.util.SplittableRandom
 import java.util.UUID
 import java.util.WeakHashMap
-
-fun String.indent(indent: String): String = split("\n").joinToString("\n") { "$indent$it" }
 
 fun <T> Iterable<T>.shuffled(random: SplittableRandom): List<T> {
     val list = toMutableList()
@@ -21,17 +18,6 @@ fun <T> Iterable<T>.shuffled(random: SplittableRandom): List<T> {
 
     return list
 }
-
-inline fun <reified V> swap(arr: Array<V>, i: Int, j: Int) {
-    val tmp = arr[i]
-    arr[i] = arr[j]
-    arr[j] = tmp
-}
-
-fun <V> swap(list: MutableList<V>, i: Int, j: Int) {
-    list[i] = list.set(j, list[i])
-}
-
 inline fun <reified V> shuffle(list: MutableList<V>, rnd: SplittableRandom) {
     val SHUFFLE_THRESHOLD = 5
     val size = list.size
@@ -74,45 +60,9 @@ operator fun <E : Enum<E>> EnumSet<E>.plus(that: EnumSet<E>): EnumSet<E> {
     return set
 }
 
-fun <V> closure(list: List<V>, f: (V) -> List<V>): List<V> {
-    val s = HashSet<V>(list)
-    val q = java.util.ArrayDeque(s)
-
-    while (q.isNotEmpty()) {
-        val m = q.remove()
-        f(m).filterTo(q) { it !in s }
-        s.add(m)
-    }
-
-    return s.toList()
-}
-
-fun String.capitalize(): String = replaceFirstChar {
-    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-}
-
-fun <T> Set<T>.isSubsetOf(t: Set<T>): Boolean = this.all { it in t }
-
 fun Double.toStringWithDigits(digits: Int): String {
     assert(digits >= 0)
     return "%.${digits}f".format(this)
-}
-
-fun Byte.base16(): String {
-    val value = toInt()
-    return if (value < 16) {
-        "0" + value.toString(16)
-    } else {
-        value.toString(16)
-    }
-}
-
-fun ByteArray.base16(from: Int = 0, until: Int = this.size): String {
-    val sb = StringBuilder()
-    for (i in from until until) {
-        sb.append(this[i].base16())
-    }
-    return sb.toString()
 }
 
 fun UUID.toByteArray(): ByteArray {

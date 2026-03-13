@@ -1,5 +1,7 @@
 package one.wabbit.data
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class NonEmptyList<out A> private constructor(val value: List<A>) : List<A> {
     override val size: Int
@@ -32,13 +34,11 @@ value class NonEmptyList<out A> private constructor(val value: List<A>) : List<A
         fun <A> of(first: A, vararg rest: A): NonEmptyList<A> =
             NonEmptyList(listOf(first) + rest.toList())
 
-        @JvmStatic
         fun <A> fromListOrThrow(value: List<A>): NonEmptyList<A> {
             if (value.isEmpty()) throw IllegalArgumentException("List must not be empty")
             return NonEmptyList(value)
         }
 
-        @JvmStatic
         fun <A> fromListOrNull(value: List<A>): NonEmptyList<A>? =
             if (value.isEmpty()) null else NonEmptyList(value)
     }
