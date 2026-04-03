@@ -344,7 +344,7 @@ class ByteBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Byte): Int = buffer.binarySearch(value, 0, size)
+    fun binarySearch(value: Byte): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
     fun sorted(): ByteBuffer {
         val copy = this.copy()

@@ -344,7 +344,7 @@ class LongBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Long): Int = buffer.binarySearch(value, 0, size)
+    fun binarySearch(value: Long): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
     fun sorted(): LongBuffer {
         val copy = this.copy()

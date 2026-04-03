@@ -345,7 +345,7 @@ class ShortBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Short): Int = buffer.binarySearch(value, 0, size)
+    fun binarySearch(value: Short): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
     fun sorted(): ShortBuffer {
         val copy = this.copy()

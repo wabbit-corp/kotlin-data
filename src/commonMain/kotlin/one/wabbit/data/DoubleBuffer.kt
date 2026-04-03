@@ -345,7 +345,7 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
-    fun binarySearch(value: Double): Int = buffer.binarySearch(value, 0, size)
+    fun binarySearch(value: Double): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
     fun sorted(): DoubleBuffer {
         val copy = this.copy()

@@ -138,7 +138,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
     //    override fun indexOf(element: T): Int =
     //        unsafe.indexOf(element)
 
-    fun update(index: Int, value: Any?): Arr<T> = Arr(unsafe.clone().apply { this[index] = value })
+    fun update(index: Int, value: Any?): Arr<T> = Arr(unsafe.copyOf().apply { this[index] = value })
 
     operator fun plus(other: Arr<@UnsafeVariance T>): Arr<T> {
         val newArr = arrayOfNulls<Any?>(unsafe.size + other.unsafe.size)

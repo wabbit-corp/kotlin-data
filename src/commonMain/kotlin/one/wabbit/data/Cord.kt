@@ -34,7 +34,7 @@ class Cord(private val value: Any, val length: Int, private val depth: Int) {
         val rights = arrayOfNulls<Any>(this.depth)
         val out = CharArray(this.length)
         unsafeAppendToH(rights, out, this.value)
-        return String(out)
+        return out.concatToString()
     }
 
     internal class TypeSerializer : KSerializer<Cord> {
