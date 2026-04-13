@@ -15,6 +15,7 @@ class ConcurrentHashMapSpec {
         assertEquals(1, map["a"])
         assertEquals(1, map.put("a", 2))
         assertEquals(2, map["a"])
+        assertEquals(1, map.size)
         assertEquals(1, map.size())
     }
 
@@ -26,6 +27,7 @@ class ConcurrentHashMapSpec {
         assertEquals(1, map.putIfAbsent("a", 2))
         assertTrue(map.containsKey("a"))
         assertFalse(map.containsKey("b"))
+        assertEquals(1, map.size)
         assertEquals(1, map.size())
     }
 
@@ -39,6 +41,7 @@ class ConcurrentHashMapSpec {
         assertTrue(map.remove("a", 1))
         assertNull(map["a"])
         assertEquals(2, map.remove("b"))
+        assertEquals(0, map.size)
         assertEquals(0, map.size())
     }
 
@@ -61,6 +64,7 @@ class ConcurrentHashMapSpec {
 
         map.clear()
 
+        assertEquals(0, map.size)
         assertEquals(0, map.size())
         assertFalse(map.containsKey("a"))
         assertTrue(map.entriesSnapshot().isEmpty())

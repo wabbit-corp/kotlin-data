@@ -62,16 +62,36 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         return if (start > end) start to start else start to end
     }
 
+    private fun requireElement(): Unit =
+        if (usedSize == 0) {
+            throw NoSuchElementException("Buffer is empty")
+        } else {
+            Unit
+        }
+
+    private fun requireSliceIndexRange(startIndex: Int, endIndex: Int, size: Int) {
+        if (startIndex !in 0..size) {
+            throw IndexOutOfBoundsException("Start index out of bounds: $startIndex")
+        }
+        if (endIndex !in startIndex..size) {
+            throw IndexOutOfBoundsException("End index out of bounds: $endIndex")
+        }
+    }
+
     // /////////////////////////////////////////////////////////////////////////
     // Comparable & Hashable
     // /////////////////////////////////////////////////////////////////////////
+
+    private fun sameValue(left: Float, right: Float): Boolean = left.equals(right)
+
+    private fun hashValue(value: Float): Int = value.hashCode()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is FloatBuffer) return false
         if (usedSize != other.usedSize) return false
         for (i in 0 until usedSize) {
-            if (buffer[i] != other.buffer[i]) return false
+            if (!sameValue(buffer[i], other.buffer[i])) return false
         }
         return true
     }
@@ -79,7 +99,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     override fun hashCode(): Int {
         var result = 1
         for (i in 0 until usedSize) {
-            result = result * 31 + buffer[i].hashCode()
+            result = result * 31 + hashValue(buffer[i])
         }
         return result
     }
@@ -182,7 +202,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     fun removeAll(value: Float): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
-            if (buffer[readIndex] != value) {
+            if (!sameValue(buffer[readIndex], value)) {
                 buffer[writeIndex++] = buffer[readIndex]
             }
         }
@@ -213,7 +233,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     fun reduce(operation: (Float, Float) -> Float): Float {
-        require(usedSize > 0) { "Empty buffer cannot be reduced." }
+        requireElement()
         var accumulator = buffer[0]
         for (i in 1 until usedSize) {
             accumulator = operation(accumulator, buffer[i])
@@ -287,7 +307,10 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
         override fun hasNext(): Boolean = index < buf.usedSize
 
-        override fun next(): Float = buf.buffer[index++]
+        override fun next(): Float {
+            if (!hasNext()) throw NoSuchElementException()
+            return buf.buffer[index++]
+        }
     }
 
     operator fun iterator(): Iterator = Iterator(this)
@@ -391,14 +414,14 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun indexOf(value: Float): Int {
         for (i in 0 until size) {
-            if (buffer[i] == value) return i
+            if (sameValue(buffer[i], value)) return i
         }
         return -1
     }
 
     fun indexOfLast(value: Float): Int {
         for (i in size - 1 downTo 0) {
-            if (buffer[i] == value) return i
+            if (sameValue(buffer[i], value)) return i
         }
         return -1
     }
@@ -488,6 +511,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         if (idx < 0 || idx > usedSize) {
             throw IndexOutOfBoundsException("Index out of bounds: $fromIndex")
         }
+        requireSliceIndexRange(startIndex, endIndex, values.size)
         val rangeSize = endIndex - startIndex
         if (idx + rangeSize > usedSize) {
             throw IndexOutOfBoundsException(
@@ -535,8 +559,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
     fun insertAt(index: Int, values: FloatArray, startIndex: Int = 0, endIndex: Int = values.size) {
         val idx = normalizeInsertIndex(index)
-        require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
-        require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
+        requireSliceIndexRange(startIndex, endIndex, values.size)
         val addSize = endIndex - startIndex
         ensureCapacity(usedSize + addSize)
         if (idx < usedSize) {
@@ -553,8 +576,7 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
         endIndex: Int = values.size,
     ) {
         var idx = normalizeInsertIndex(index)
-        require(startIndex in 0..values.size) { "Start index out of bounds: $startIndex" }
-        require(endIndex in startIndex..values.size) { "End index out of bounds: $endIndex" }
+        requireSliceIndexRange(startIndex, endIndex, values.size)
         val addSize = endIndex - startIndex
         ensureCapacity(usedSize + addSize)
         if (idx < usedSize) {
@@ -599,12 +621,12 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     fun removeFirst(): Float {
-        require(usedSize > 0) { "Buffer is empty." }
+        requireElement()
         return removeAt(0)
     }
 
     fun removeLast(): Float {
-        require(usedSize > 0) { "Buffer is empty." }
+        requireElement()
         return removeAt(usedSize - 1)
     }
 
@@ -615,11 +637,17 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
 
         override fun hasPrevious(): Boolean = index > 0
 
-        override fun next(): Float = buf.buffer[index++]
+        override fun next(): Float {
+            if (!hasNext()) throw NoSuchElementException()
+            return buf.buffer[index++]
+        }
 
         override fun nextIndex(): Int = index
 
-        override fun previous(): Float = buf.buffer[--index]
+        override fun previous(): Float {
+            if (!hasPrevious()) throw NoSuchElementException()
+            return buf.buffer[--index]
+        }
 
         override fun previousIndex(): Int = index - 1
     }

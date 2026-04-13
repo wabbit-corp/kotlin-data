@@ -1,6 +1,8 @@
 package one.wabbit.data
 
 expect class ConcurrentHashMap<K : Any, V : Any>(initialCapacity: Int = 16) {
+    val size: Int
+
     operator fun get(key: K): V?
 
     fun put(key: K, value: V): V?

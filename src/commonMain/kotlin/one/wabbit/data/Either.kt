@@ -27,17 +27,21 @@ sealed class Either<out E, out A> {
         is Right -> null
     }
 
-    inline fun rightOr(block: () -> @UnsafeVariance A): A? =
+    inline fun getOrElse(block: () -> @UnsafeVariance A): A =
         when (this) {
             is Left -> block()
             is Right -> value
         }
 
-    inline fun leftOr(block: () -> @UnsafeVariance E): E? =
+    inline fun getLeftOrElse(block: () -> @UnsafeVariance E): E =
         when (this) {
             is Left -> value
             is Right -> block()
         }
+
+    inline fun rightOr(block: () -> @UnsafeVariance A): A = getOrElse(block)
+
+    inline fun leftOr(block: () -> @UnsafeVariance E): E = getLeftOrElse(block)
 
     @Throws(IllegalStateException::class)
     fun rightOrThrow(): A =

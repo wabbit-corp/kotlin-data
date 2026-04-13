@@ -5,26 +5,57 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlin.jvm.JvmField
 
+/**
+ * Compact immutable map backed by flat arrays.
+ *
+ * This type is intentionally a tiny immutable map.
+ *
+ * Implementation notes:
+ * - iteration order is insertion order
+ * - `get`, `contains`, and key replacement use linear scans over the flat arrays
+ * - `put` copies the backing arrays and is therefore O(n)
+ * - `equals` is order-independent map equality and therefore O(n^2) in the worst case
+ *
+ * That tradeoff is intentional: for very small maps the flat representation is compact and
+ * cache-friendly, and it avoids the object overhead of a general-purpose hash map.
+ *
+ * Prefer a regular hash map once instances routinely grow past [RECOMMENDED_MAX_SIZE] entries.
+ */
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = ArrMap.TypeSerializer::class)
-class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes: IntArray) {
+class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArray) {
+    private val unsafe: Array<Any?> = unsafe.copyOf()
+    private val hashes: IntArray = hashes.copyOf()
+
     init {
         require(unsafe.size % 2 == 0) { "Expected even number of elements, got ${unsafe.size}" }
         require(unsafe.size / 2 == hashes.size) { "Expected hashes size to be half of unsafe size" }
     }
 
     val size: Int
-        inline get() = hashes.size
+        get() = hashes.size
 
-    inline fun isEmpty(): Boolean = unsafe.isEmpty()
+    private fun requireEntry(): Unit =
+        if (unsafe.isEmpty()) {
+            throw NoSuchElementException("ArrMap is empty")
+        } else {
+            Unit
+        }
 
-    inline fun isNotEmpty(): Boolean = !unsafe.isEmpty()
+    fun isEmpty(): Boolean = unsafe.isEmpty()
 
-    inline fun first(): Pair<K, V> = Pair(unsafe[0] as K, unsafe[1] as V)
+    fun isNotEmpty(): Boolean = !unsafe.isEmpty()
 
-    inline fun last(): Pair<K, V> = Pair(unsafe[unsafe.size - 2] as K, unsafe[unsafe.size - 1] as V)
+    fun first(): Pair<K, V> {
+        requireEntry()
+        return Pair(unsafe[0] as K, unsafe[1] as V)
+    }
+
+    fun last(): Pair<K, V> {
+        requireEntry()
+        return Pair(unsafe[unsafe.size - 2] as K, unsafe[unsafe.size - 1] as V)
+    }
 
     operator fun get(key: K): V? {
         val unsafe = unsafe
@@ -79,7 +110,7 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
             if (hashes[i] == keyHash && itemKey == key) {
                 val newArr = unsafe.copyOf()
                 newArr[2 * i + 1] = value
-                return ArrMap(newArr, hashes)
+                return ArrMap(newArr, hashes.copyOf())
             }
             i += 1
         }
@@ -193,7 +224,7 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
         val size = hashes.size
         var i = 0
         while (i < size) {
-            result += hashes[i] xor unsafe[2 * i + 1].hashCode()
+            result += hashes[i] xor (unsafe[2 * i + 1]?.hashCode() ?: 0)
             i += 1
         }
         return result
@@ -208,7 +239,7 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
             val thatSize = other.hashes.size
             if (thisSize != thatSize) return false
             if (hashCode() != other.hashCode()) return false
-            // TODO: Optimize this.
+            // Intentionally scan: ArrMap is a tiny-map structure optimized for very small sizes.
             val thisUnsafe = unsafe
             val thatUnsafe = other.unsafe
             var i = 0
@@ -255,6 +286,8 @@ class ArrMap<K : Any, V>(@JvmField val unsafe: Array<Any?>, @JvmField val hashes
     }
 
     companion object {
+        const val RECOMMENDED_MAX_SIZE: Int = 16
+
         private val EMPTY = ArrMap<Nothing, Nothing>(emptyArray(), intArrayOf())
 
         fun <K : Any, V> empty(): ArrMap<K, V> = EMPTY as ArrMap<K, V>

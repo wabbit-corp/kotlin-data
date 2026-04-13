@@ -7,23 +7,48 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlin.jvm.JvmField
 
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = Arr.TypeSerializer::class)
-data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
-    inline val size: Int
+class Arr<out T>(unsafe: Array<Any?>) {
+    private val unsafe: Array<Any?> = unsafe.copyOf()
+
+    private fun requireElement(): Unit =
+        if (unsafe.isEmpty()) {
+            throw NoSuchElementException("Arr is empty")
+        } else {
+            Unit
+        }
+
+    private fun requireIndex(index: Int): Int {
+        if (index !in unsafe.indices) {
+            throw IndexOutOfBoundsException("Index $index out of bounds for size ${unsafe.size}")
+        }
+        return index
+    }
+
+    val size: Int
         get() = unsafe.size
 
-    inline fun isEmpty(): Boolean = unsafe.isEmpty()
+    fun isEmpty(): Boolean = unsafe.isEmpty()
 
-    inline fun isNotEmpty(): Boolean = !unsafe.isEmpty()
+    fun isNotEmpty(): Boolean = !unsafe.isEmpty()
 
-    inline fun first(): T = unsafe[0] as T
+    fun first(): T {
+        requireElement()
+        return unsafe[0] as T
+    }
 
-    inline fun last(): T = unsafe[unsafe.size - 1] as T
+    fun firstOrNull(): T? = if (unsafe.isEmpty()) null else unsafe[0] as T
 
-    inline fun <U> map(f: (T) -> U): Arr<U> {
+    fun last(): T {
+        requireElement()
+        return unsafe[unsafe.size - 1] as T
+    }
+
+    fun lastOrNull(): T? = if (unsafe.isEmpty()) null else unsafe[unsafe.size - 1] as T
+
+    fun <U> map(f: (T) -> U): Arr<U> {
         val unsafe = unsafe
         val size = unsafe.size
         val newArr = arrayOfNulls<Any?>(size)
@@ -33,7 +58,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         return Arr(newArr)
     }
 
-    inline fun <U : Any> mapOrNull(f: (T) -> U?): Arr<U>? {
+    fun <U : Any> mapOrNull(f: (T) -> U?): Arr<U>? {
         val unsafe = unsafe
         val size = unsafe.size
         val newArr = arrayOfNulls<Any?>(size)
@@ -45,7 +70,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         return Arr(newArr)
     }
 
-    inline fun all(predicate: (T) -> Boolean): Boolean {
+    fun all(predicate: (T) -> Boolean): Boolean {
         val unsafe = unsafe
         val size = unsafe.size
         for (i in 0..size - 1) {
@@ -56,7 +81,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         return true
     }
 
-    inline fun any(predicate: (T) -> Boolean): Boolean {
+    fun any(predicate: (T) -> Boolean): Boolean {
         val unsafe = unsafe
         val size = unsafe.size
         for (i in 0..size - 1) {
@@ -67,7 +92,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         return false
     }
 
-    inline fun count(predicate: (T) -> Boolean): Int {
+    fun count(predicate: (T) -> Boolean): Int {
         val unsafe = unsafe
         val size = unsafe.size
         var count = 0
@@ -79,7 +104,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         return count
     }
 
-    inline operator fun get(index: Int): T = unsafe[index] as T
+    operator fun get(index: Int): T = unsafe[requireIndex(index)] as T
 
     val indices: IntRange
         get() = unsafe.indices
@@ -89,7 +114,10 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
 
         override fun hasNext(): Boolean = index < unsafe.size
 
-        override fun next(): Any? = unsafe[index++]
+        override fun next(): Any? {
+            if (!hasNext()) throw NoSuchElementException()
+            return unsafe[index++]
+        }
     }
 
     operator fun iterator(): Iterator<T> = ArrIterator(unsafe) as Iterator<T>
@@ -138,7 +166,10 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
     //    override fun indexOf(element: T): Int =
     //        unsafe.indexOf(element)
 
-    fun update(index: Int, value: Any?): Arr<T> = Arr(unsafe.copyOf().apply { this[index] = value })
+    fun update(index: Int, value: @UnsafeVariance T): Arr<T> {
+        val idx = requireIndex(index)
+        return Arr(unsafe.copyOf().apply { this[idx] = value })
+    }
 
     operator fun plus(other: Arr<@UnsafeVariance T>): Arr<T> {
         val newArr = arrayOfNulls<Any?>(unsafe.size + other.unsafe.size)
@@ -163,7 +194,7 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
         var result = 1
         val size = unsafe.size
         for (i in 0..size - 1) {
-            result = result * 31 + unsafe[i].hashCode()
+            result = result * 31 + (unsafe[i]?.hashCode() ?: 0)
         }
         return result
     }
@@ -179,12 +210,6 @@ data class Arr<out T>(@JvmField val unsafe: Array<Any?>) {
             for (i in 0..size - 1) {
                 if (unsafe[i] === otherUnsafe[i]) continue
                 if (unsafe[i] != otherUnsafe[i]) return false
-            }
-            return true
-        } else if (other is List<*>) {
-            if (size != other.size) return false
-            for (i in 0..size - 1) {
-                if (unsafe[i] != other[i]) return false
             }
             return true
         } else {

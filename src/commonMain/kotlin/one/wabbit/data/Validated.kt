@@ -1,10 +1,6 @@
 package one.wabbit.data
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.intrinsics.createCoroutineUnintercepted
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -24,7 +20,7 @@ sealed class Validated<out E, out A> {
 
     fun <A1> map(f: (A) -> A1): Validated<E, A1> =
         when (this) {
-            is Fail -> this
+            is Fail -> Fail(issues)
             is Success -> Success(f(value), issues)
         }
 
@@ -55,7 +51,7 @@ sealed class Validated<out E, out A> {
 
         fun <A, B, E> Validated<E, A>.flatMap(f: (A) -> Validated<E, B>): Validated<E, B> =
             when (this) {
-                is Fail -> this
+                is Fail -> Fail(issues)
                 is Success ->
                     when (val fv = f(value)) {
                         is Fail -> fv
@@ -64,79 +60,61 @@ sealed class Validated<out E, out A> {
             }
 
         interface Builder<Issue> {
-            suspend fun raise(issue: Issue): Unit
+            fun raise(issue: Issue)
 
-            suspend fun failIfRaised(): Unit
+            fun failIfRaised()
 
-            suspend fun fail(): Nothing
+            fun fail(): Nothing
 
-            suspend fun fail(issue: Issue): Nothing {
+            fun fail(issue: Issue): Nothing {
                 raise(issue)
                 fail()
             }
 
-            suspend fun fail(vararg issues: Issue): Nothing {
+            fun fail(vararg issues: Issue): Nothing {
                 issues.forEach { raise(it) }
                 fail()
             }
 
-            suspend fun <A> lift(value: Validated<Issue, A>): A
+            fun <A> lift(value: Validated<Issue, A>): A
         }
 
-        fun <Issue, Result> run(f: suspend Builder<Issue>.() -> Result): Validated<Issue, Result> {
+        fun <Issue, Result> run(f: Builder<Issue>.() -> Result): Validated<Issue, Result> {
             val issues = mutableListOf<Issue>()
-            var failed: Boolean = false
-            var resultVar: kotlin.Result<Result> =
-                kotlin.Result.failure(Exception("Result not set"))
 
             val builder =
                 object : Builder<Issue> {
-                    override suspend fun raise(issue: Issue) {
+                    override fun raise(issue: Issue) {
                         issues += issue
                     }
 
-                    override suspend fun failIfRaised(): Unit = suspendCoroutine { cont ->
+                    override fun failIfRaised() {
                         if (issues.isNotEmpty()) {
-                            failed = true
-                            return@suspendCoroutine Unit
-                        } else {
-                            cont.resume(Unit)
+                            throw AbortValidation()
                         }
                     }
 
-                    override suspend fun fail(): Nothing = suspendCoroutine { cont ->
-                        failed = true
-                        return@suspendCoroutine Unit
-                    }
+                    override fun fail(): Nothing = throw AbortValidation()
 
-                    override suspend fun <A> lift(value: Validated<Issue, A>): A =
-                        suspendCoroutine {
-                            when (value) {
-                                is Success -> it.resume(value.value)
-                                is Fail -> {
-                                    issues += value.issues
-                                    failed = true
-                                    return@suspendCoroutine Unit
-                                }
+                    override fun <A> lift(value: Validated<Issue, A>): A =
+                        when (value) {
+                            is Success -> value.value
+                            is Fail -> {
+                                issues += value.issues
+                                throw AbortValidation()
                             }
                         }
                 }
 
-            val store =
-                object : Continuation<Result> {
-                    override val context = EmptyCoroutineContext
-
-                    override fun resumeWith(result: kotlin.Result<Result>) {
-                        resultVar = result
-                    }
-                }
-
-            f.createCoroutineUnintercepted(builder, store).resume(Unit)
-
-            return when {
-                failed -> Fail(issues)
-                else -> Success(resultVar.getOrThrow(), issues)
+            return try {
+                Success(f(builder), issues)
+            } catch (_: AbortValidation) {
+                Fail(issues)
             }
         }
     }
+}
+
+private class AbortValidation : CancellationException("Validated.run aborted") {
+    override fun fillInStackTrace(): Throwable = this
 }

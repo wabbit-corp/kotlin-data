@@ -7,6 +7,8 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = ConsList.TypeSerializer::class)
 sealed class ConsList<out V> : List<V> {
+    abstract override val size: Int
+
     abstract fun <Z> cata(nil: Z, cons: (V, Z) -> Z): Z
 
     fun cons(value: @UnsafeVariance V): Cons<V> = Cons(value, this)
@@ -142,7 +144,7 @@ sealed class ConsList<out V> : List<V> {
     operator fun plus(other: ConsList<@UnsafeVariance V>): ConsList<V> =
         this.foldRight(other) { v, acc -> acc.cons(v) }
 
-    override fun get(index: Int): V {
+    override operator fun get(index: Int): V {
         if (index < 0) throw IndexOutOfBoundsException("index: $index")
         if (index >= size) throw IndexOutOfBoundsException("index: $index, size: $size")
 
@@ -205,7 +207,7 @@ sealed class ConsList<out V> : List<V> {
 
     override fun isEmpty(): Boolean = this is Nil
 
-    override fun iterator(): Iterator<V> {
+    override operator fun iterator(): Iterator<V> {
         val list = this
         return object : Iterator<V> {
             var current: ConsList<@UnsafeVariance V> = list
@@ -246,6 +248,31 @@ sealed class ConsList<out V> : List<V> {
     override fun subList(fromIndex: Int, toIndex: Int): List<V> =
         toList().subList(fromIndex, toIndex)
 
+    final override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is List<*>) return false
+        if (size != other.size) return false
+
+        val otherIterator = other.iterator()
+        var current = this
+        while (current is Cons) {
+            if (!otherIterator.hasNext()) return false
+            if (current.head != otherIterator.next()) return false
+            current = current.tail
+        }
+        return !otherIterator.hasNext()
+    }
+
+    final override fun hashCode(): Int {
+        var result = 1
+        var current = this
+        while (current is Cons) {
+            result = 31 * result + (current.head?.hashCode() ?: 0)
+            current = current.tail
+        }
+        return result
+    }
+
     object Nil : ConsList<Nothing>() {
         override val size = 0
 
@@ -255,7 +282,7 @@ sealed class ConsList<out V> : List<V> {
     }
 
     data class Cons<out A>(val head: A, val tail: ConsList<A>) : ConsList<A>() {
-        override val size = tail.size + 1
+        override val size: Int = tail.size + 1
 
         override fun <Z> cata(nil: Z, cons: (A, Z) -> Z): Z = cons(head, tail.cata(nil, cons))
 

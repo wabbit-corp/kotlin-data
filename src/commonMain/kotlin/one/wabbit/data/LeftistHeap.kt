@@ -1,13 +1,20 @@
+@file:OptIn(InternalDataApi::class)
+
 package one.wabbit.data
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
-@Serializable
+@Serializable(with = LeftistHeap.TypeSerializer::class)
 sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
-    @Serializable data object Empty : LeftistHeap<Nothing>()
+    data object Empty : LeftistHeap<Nothing>()
 
-    @Serializable
-    data class Node<E : Comparable<E>>(
+    @InternalDataApi
+    class Node<E : Comparable<E>> @InternalDataApi constructor(
         val rank: Int,
         val value: E,
         val left: LeftistHeap<E>,
@@ -33,13 +40,53 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
             is Node -> merge(left, right)
         }
 
+    fun merge(that: LeftistHeap<@UnsafeVariance E>): LeftistHeap<E> = Companion.merge(this, that)
+
     fun insert(value: @UnsafeVariance E): LeftistHeap<E> = merge(Node(1, value, Empty, Empty), this)
+
+    final override fun equals(other: Any?): Boolean =
+        other is LeftistHeap<*> && sortedElements() == other.sortedElements()
+
+    final override fun hashCode(): Int = sortedElements().hashCode()
+
+    private fun sortedElements(): List<E> {
+        val result = mutableListOf<E>()
+        var current: LeftistHeap<E> = this
+        while (current is Node) {
+            result += current.value
+            current = current.deleteMin()
+        }
+        return result
+    }
+
+    class TypeSerializer<E : Comparable<E>>(private val valueSerializer: KSerializer<E>) :
+        KSerializer<LeftistHeap<E>> {
+        private val listSerializer = ListSerializer(valueSerializer)
+
+        override val descriptor: SerialDescriptor = listSerializer.descriptor
+
+        override fun serialize(encoder: Encoder, value: LeftistHeap<E>) {
+            encoder.encodeSerializableValue(listSerializer, value.sortedElements())
+        }
+
+        override fun deserialize(decoder: Decoder): LeftistHeap<E> {
+            val values = decoder.decodeSerializableValue(listSerializer)
+            var heap: LeftistHeap<E> = empty()
+            for (value in values) {
+                heap = heap.insert(value)
+            }
+            return heap
+        }
+    }
 
     companion object {
         val empty: LeftistHeap<Nothing> = Empty
 
+        @Suppress("UNCHECKED_CAST")
+        fun <E : Comparable<E>> empty(): LeftistHeap<E> = empty as LeftistHeap<E>
+
         fun <E : Comparable<E>> of(vararg values: E): LeftistHeap<E> {
-            var heap: LeftistHeap<E> = empty
+            var heap: LeftistHeap<E> = empty()
             for (value in values) {
                 heap = heap.insert(value)
             }
@@ -63,7 +110,7 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
                 Node(rank(left) + 1, value, right, left)
             }
 
-        private fun <E : Comparable<E>> merge(
+        internal fun <E : Comparable<E>> merge(
             left: LeftistHeap<E>,
             right: LeftistHeap<E>,
         ): LeftistHeap<E> {

@@ -35,12 +35,8 @@ fun String.capitalize(): String = replaceFirstChar {
 fun <T> Set<T>.isSubsetOf(that: Set<T>): Boolean = all { it in that }
 
 fun Byte.base16(): String {
-    val value = toInt()
-    return if (value < 16) {
-        "0" + value.toString(16)
-    } else {
-        value.toString(16)
-    }
+    val value = toInt() and 0xFF
+    return value.toString(16).padStart(2, '0')
 }
 
 fun ByteArray.base16(from: Int = 0, until: Int = size): String {

@@ -8,7 +8,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = LazyList.TypeSerializer::class)
-sealed interface LazyList<out E> {
+sealed interface LazyList<out E> : Iterable<E> {
     val thunk: Need<Strict<E>>
 
     data class Delay<out E>(override val thunk: Need<Strict<E>>) : LazyList<E> {
@@ -17,6 +17,10 @@ sealed interface LazyList<out E> {
                 Delay(Need.apply { thunk() }.flatMap { it.thunk })
         }
 
+        override fun equals(other: Any?): Boolean = lazyListEquals(this, other)
+
+        override fun hashCode(): Int = lazyListHashCode(this)
+
         override fun toString(): String = toList().toString()
     }
 
@@ -24,7 +28,11 @@ sealed interface LazyList<out E> {
         override val thunk: Need<Strict<E>> = Need.now(this)
     }
 
-    data object Nil : Strict<Nothing>() {
+    object Nil : Strict<Nothing>() {
+        override fun equals(other: Any?): Boolean = lazyListEquals(this, other)
+
+        override fun hashCode(): Int = lazyListHashCode(this)
+
         override fun toString(): String = toList().toString()
     }
 
@@ -36,6 +44,10 @@ sealed interface LazyList<out E> {
             operator fun <E> invoke(head: E, tail: () -> LazyList<E>): Cons<E> =
                 Cons(head, Delay(tail))
         }
+
+        override fun equals(other: Any?): Boolean = lazyListEquals(this, other)
+
+        override fun hashCode(): Int = lazyListHashCode(this)
 
         override fun toString(): String = toList().toString()
     }
@@ -132,7 +144,7 @@ sealed interface LazyList<out E> {
         }
     }
 
-    fun iterator(): Iterator<E> =
+    override operator fun iterator(): Iterator<E> =
         object : Iterator<E> {
             var current: LazyList<@UnsafeVariance E> = this@LazyList
 
@@ -187,6 +199,41 @@ sealed interface LazyList<out E> {
 
         fun <A> recursive(f: (LazyList<A>) -> LazyList<A>): LazyList<A> =
             Delay(Need.recursive<LazyList.Strict<A>> { f(Delay(it)).thunk })
+    }
+}
+
+private fun lazyListEquals(left: LazyList<*>, other: Any?): Boolean {
+    if (left === other) return true
+    if (other !is LazyList<*>) return false
+
+    var currentLeft: LazyList<*> = left
+    var currentRight: LazyList<*> = other
+    while (true) {
+        val leftStrict = currentLeft.thunk.value
+        val rightStrict = currentRight.thunk.value
+        when {
+            leftStrict is LazyList.Nil && rightStrict is LazyList.Nil -> return true
+            leftStrict is LazyList.Cons && rightStrict is LazyList.Cons -> {
+                if (leftStrict.head != rightStrict.head) return false
+                currentLeft = leftStrict.tail
+                currentRight = rightStrict.tail
+            }
+            else -> return false
+        }
+    }
+}
+
+private fun lazyListHashCode(list: LazyList<*>): Int {
+    var result = 1
+    var current: LazyList<*> = list
+    while (true) {
+        when (val strict = current.thunk.value) {
+            is LazyList.Nil -> return result
+            is LazyList.Cons -> {
+                result = 31 * result + (strict.head?.hashCode() ?: 0)
+                current = strict.tail
+            }
+        }
     }
 }
 

@@ -1,3 +1,5 @@
+@file:OptIn(InternalDataApi::class)
+
 package one.wabbit.data
 
 import kotlin.test.Test
@@ -73,4 +75,108 @@ class ChunkSpec {
         assertEquals(20, updated[1])
         assertEquals(40, updated[3])
     }
+
+    @Test
+    fun `append prepend update and plus keep earlier chunks persistent`() {
+        val appendBase = chunkOf(1, 2).append(3)
+        val appended = appendBase.append(4)
+        assertEquals(listOf(1, 2, 3), appendBase.toList())
+        assertEquals(listOf(1, 2, 3, 4), appended.toList())
+
+        val plusBase = chunkOf(1, 2) + chunkOf(3)
+        val plusExtended = plusBase + chunkOf(4)
+        assertEquals(listOf(1, 2, 3), plusBase.toList())
+        assertEquals(listOf(1, 2, 3, 4), plusExtended.toList())
+
+        val prependBase = chunkOf(3, 4).prepend(2)
+        val prepended = prependBase.prepend(1)
+        assertEquals(listOf(2, 3, 4), prependBase.toList())
+        assertEquals(listOf(1, 2, 3, 4), prepended.toList())
+
+        val updateBase = chunkOf(1, 2, 3, 4).update(1, 20)
+        val updated = updateBase.update(3, 40)
+        assertEquals(listOf(1, 20, 3, 4), updateBase.toList())
+        assertEquals(listOf(1, 20, 3, 40), updated.toList())
+    }
+
+    @Test
+    fun `chunk equality and hash code are value based across representations`() {
+        val arrayChunk = chunkOf(1, 2, 3)
+        val concatChunk = chunkOf(1, 2) + chunkOf(3)
+        val sliceChunk = chunkOf(0, 1, 2, 3, 4).slice(1, 4)
+        val appendChunk = chunkOf(1, 2).append(3)
+        val updateChunk = chunkOf(9, 2, 3).update(0, 1)
+        val intArrayChunk = Chunk.fromIntArray(intArrayOf(1, 2, 3))
+
+        assertTrue(arrayChunk == concatChunk)
+        assertTrue(concatChunk == arrayChunk)
+        assertTrue(arrayChunk == sliceChunk)
+        assertTrue(sliceChunk == arrayChunk)
+        assertTrue(arrayChunk == appendChunk)
+        assertTrue(appendChunk == arrayChunk)
+        assertTrue(arrayChunk == updateChunk)
+        assertTrue(updateChunk == arrayChunk)
+        assertTrue(arrayChunk == intArrayChunk)
+        assertTrue(intArrayChunk == arrayChunk)
+
+        val expectedHash = arrayChunk.hashCode()
+        assertEquals(expectedHash, concatChunk.hashCode())
+        assertEquals(expectedHash, sliceChunk.hashCode())
+        assertEquals(expectedHash, appendChunk.hashCode())
+        assertEquals(expectedHash, updateChunk.hashCode())
+        assertEquals(expectedHash, intArrayChunk.hashCode())
+
+        val stringChunk = Chunk.fromString("abc")
+        val charChunk = chunkOf('a', 'b', 'c')
+        assertTrue(stringChunk == charChunk)
+        assertTrue(charChunk == stringChunk)
+        assertEquals(charChunk.hashCode(), stringChunk.hashCode())
+    }
+
+    @Test
+    fun `concat uses a specialized iterator instead of the generic indexed iterator`() {
+        val concat = Chunk.Concat(arrayOf(chunkOf(1, 2), chunkOf(3), chunkOf(4, 5)))
+        val leafIteratorClass = chunkOf(1, 2).chunkIterator()::class
+
+        val iterator = concat.chunkIterator()
+
+        assertEquals(listOf(1, 2, 3, 4, 5), (0 until iterator.length).map(iterator::nextAt))
+        assertTrue(iterator::class != leafIteratorClass)
+        assertTrue(concat.slice(1, 4).chunkIterator()::class != leafIteratorClass)
+        assertEquals(listOf(1, 2, 3, 4, 5), concat.toList())
+    }
+
+    @Test
+    fun `chunk is a normal iterable`() {
+        val chunk = chunkOf(1, 2) + chunkOf(3, 4)
+        val iterated = mutableListOf<Int>()
+        for (value in chunk) {
+            iterated += value
+        }
+
+        assertEquals(listOf(1, 2, 3, 4), iterated)
+    }
+
+    @Test
+    fun `rebalance builds a balanced concat tree instead of a flat wide node`() {
+        val leaves = (0 until 8).map { chunkOf(it) }
+        val nested = Chunk.Concat(
+            arrayOf(
+                Chunk.Concat(arrayOf(leaves[0], leaves[1], leaves[2], leaves[3])),
+                Chunk.Concat(arrayOf(leaves[4], leaves[5], leaves[6], leaves[7])),
+            ),
+        )
+
+        val rebalanced = nested.rebalance()
+
+        assertIs<Chunk.Concat<Int>>(rebalanced)
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6, 7), rebalanced.toList())
+        assertEquals(2, maxConcatWidth(rebalanced))
+    }
 }
+
+private fun maxConcatWidth(chunk: Chunk<Int>): Int =
+    when (chunk) {
+        is Chunk.Concat -> maxOf(chunk.chunks.size, chunk.chunks.maxOf(::maxConcatWidth))
+        else -> 0
+    }

@@ -9,7 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = Chain.TypeSerializer::class)
-class Chain<out A>(private val value: Any?, val length: Int, private val depth: Int) {
+class Chain<out A> private constructor(private val value: Any?, val length: Int, private val depth: Int) {
     private object Empty
 
     private class Concat(val left: Any?, val right: Any?)
@@ -29,10 +29,18 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
         )
 
     fun prepend(s: Chain<@UnsafeVariance A>): Chain<A> =
-        Chain<A>(Concat(s, this.value), s.length + this.length, this.depth)
+        Chain<A>(
+            Concat(s.value, this.value),
+            s.length + this.length,
+            max(s.depth + 1, this.depth),
+        )
 
     fun append(s: Chain<@UnsafeVariance A>): Chain<A> =
-        Chain<A>(Concat(this.value, s), this.length + s.length, this.depth + 1)
+        Chain<A>(
+            Concat(this.value, s.value),
+            this.length + s.length,
+            max(this.depth + 1, s.depth),
+        )
 
     fun toArray(): Array<@UnsafeVariance A> {
         val rights = arrayOfNulls<Any?>(this.depth)
@@ -47,6 +55,13 @@ class Chain<out A>(private val value: Any?, val length: Int, private val depth: 
         unsafeAppendToH(this.value, rights) { _, value -> out.add(value as A) }
         return out
     }
+
+    override fun equals(other: Any?): Boolean =
+        other is Chain<*> && length == other.length && toList() == other.toList()
+
+    override fun hashCode(): Int = toList().hashCode()
+
+    override fun toString(): String = toList().joinToString(prefix = "Chain(", postfix = ")")
 
     class TypeSerializer<E>(val elementSerializer: KSerializer<E>) : KSerializer<Chain<E>> {
         private val listSerializer = ListSerializer(elementSerializer)

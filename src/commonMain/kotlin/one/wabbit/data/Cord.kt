@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = Cord.TypeSerializer::class)
-class Cord(private val value: Any, val length: Int, private val depth: Int) {
+class Cord private constructor(private val value: Any, val length: Int, private val depth: Int) {
     private class Concat(val left: Any, val right: Any)
 
     // Cord = (String | Concat, Int)
@@ -29,6 +29,10 @@ class Cord(private val value: Any, val length: Int, private val depth: Int) {
 
     fun append(s: String): Cord =
         Cord(Concat(this.value, s), this.length + s.length, this.depth + 1)
+
+    override fun equals(other: Any?): Boolean = other is Cord && toString() == other.toString()
+
+    override fun hashCode(): Int = toString().hashCode()
 
     override fun toString(): String {
         val rights = arrayOfNulls<Any>(this.depth)

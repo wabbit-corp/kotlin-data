@@ -1,12 +1,10 @@
-@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
+@file:OptIn(InternalDataApi::class)
 
 package one.wabbit.data
 
-import kotlin.concurrent.atomics.AtomicInt
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.abs
 
-sealed class Chunk<out A> {
+sealed class Chunk<out A> : Iterable<A> {
     abstract val size: Int
     internal abstract val depth: Int
     internal open val concatDepth: Int
@@ -32,7 +30,11 @@ sealed class Chunk<out A> {
         when (this) {
             Empty -> Single(element)
             is AppendN -> appendOptimized(element)
-            else -> AppendN(this, arrayOfNulls(APPEND_PREPEND_BUFFER_CAPACITY), 1).also { it.buffer[0] = element }
+            else -> {
+                val buffer = arrayOfNulls<Any?>(APPEND_PREPEND_BUFFER_CAPACITY)
+                buffer[0] = element
+                AppendN(this, buffer, 1)
+            }
         }
 
     fun prepend(element: @UnsafeVariance A): Chunk<A> =
@@ -50,8 +52,16 @@ sealed class Chunk<out A> {
         when (this) {
             Empty -> throw IndexOutOfBoundsException("Update index=$index size=0")
             is Update -> updateOptimized(index, value)
-            else -> Update(this, IntArray(UPDATE_BUFFER_CAPACITY), arrayOfNulls(UPDATE_BUFFER_CAPACITY), 0)
-                .updateOptimized(index, value)
+            else -> {
+                if (index !in 0 until size) {
+                    throw IndexOutOfBoundsException("Update index=$index size=$size")
+                }
+                val indices = IntArray(UPDATE_BUFFER_CAPACITY)
+                val values = arrayOfNulls<Any?>(UPDATE_BUFFER_CAPACITY)
+                indices[0] = index
+                values[0] = value
+                Update(this, indices, values, 1)
+            }
         }
 
     fun drop(n: Int): Chunk<A> =
@@ -74,8 +84,9 @@ sealed class Chunk<out A> {
     }
 
     fun dropWhile(predicate: (A) -> Boolean): Chunk<A> {
+        val iterator = chunkIterator()
         var i = 0
-        while (i < size && predicate(this[i])) {
+        while (i < iterator.length && predicate(iterator.nextAt(i))) {
             i += 1
         }
         return drop(i)
@@ -96,16 +107,18 @@ sealed class Chunk<out A> {
         }
 
     fun takeWhile(predicate: (A) -> Boolean): Chunk<A> {
+        val iterator = chunkIterator()
         var i = 0
-        while (i < size && predicate(this[i])) {
+        while (i < iterator.length && predicate(iterator.nextAt(i))) {
             i += 1
         }
         return take(i)
     }
 
     fun exists(predicate: (A) -> Boolean): Boolean {
-        for (i in 0 until size) {
-            if (predicate(this[i])) {
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            if (predicate(iterator.nextAt(i))) {
                 return true
             }
         }
@@ -113,8 +126,9 @@ sealed class Chunk<out A> {
     }
 
     fun forall(predicate: (A) -> Boolean): Boolean {
-        for (i in 0 until size) {
-            if (!predicate(this[i])) {
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            if (!predicate(iterator.nextAt(i))) {
                 return false
             }
         }
@@ -150,8 +164,10 @@ sealed class Chunk<out A> {
         if (size != that.size) {
             return false
         }
-        for (i in 0 until size) {
-            if (!f(this[i], that[i])) {
+        val leftIterator = chunkIterator()
+        val rightIterator = that.chunkIterator()
+        for (i in 0 until leftIterator.length) {
+            if (!f(leftIterator.nextAt(i), rightIterator.nextAt(i))) {
                 return false
             }
         }
@@ -160,8 +176,9 @@ sealed class Chunk<out A> {
 
     fun filter(predicate: (A) -> Boolean): Chunk<A> {
         val builder = ChunkBuilder<A>(size)
-        for (i in 0 until size) {
-            val value = this[i]
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            val value = iterator.nextAt(i)
             if (predicate(value)) {
                 builder += value
             }
@@ -170,8 +187,9 @@ sealed class Chunk<out A> {
     }
 
     fun find(predicate: (A) -> Boolean): Option<@UnsafeVariance A> {
-        for (i in 0 until size) {
-            val value = this[i]
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            val value = iterator.nextAt(i)
             if (predicate(value)) {
                 return Some(value)
             }
@@ -181,8 +199,9 @@ sealed class Chunk<out A> {
 
     fun <S> foldLeft(s0: S, f: (S, A) -> S): S {
         var acc = s0
-        for (i in 0 until size) {
-            acc = f(acc, this[i])
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            acc = f(acc, iterator.nextAt(i))
         }
         return acc
     }
@@ -197,9 +216,10 @@ sealed class Chunk<out A> {
 
     fun <S> foldWhile(s0: S, pred: (S) -> Boolean, f: (S, A) -> S): S {
         var acc = s0
+        val iterator = chunkIterator()
         var i = 0
-        while (i < size && pred(acc)) {
-            acc = f(acc, this[i])
+        while (i < iterator.length && pred(acc)) {
+            acc = f(acc, iterator.nextAt(i))
             i += 1
         }
         return acc
@@ -208,8 +228,9 @@ sealed class Chunk<out A> {
     fun <X, Y> partitionMap(transform: (A) -> Either<X, Y>): Pair<Chunk<X>, Chunk<Y>> {
         val left = ChunkBuilder<X>(size)
         val right = ChunkBuilder<Y>(size)
-        for (i in 0 until size) {
-            when (val value = transform(this[i])) {
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            when (val value = transform(iterator.nextAt(i))) {
                 is Left -> left += value.value
                 is Right -> right += value.value
             }
@@ -219,8 +240,9 @@ sealed class Chunk<out A> {
 
     fun <B> map(transform: (A) -> B): Chunk<B> {
         val builder = ChunkBuilder<B>(size)
-        for (i in 0 until size) {
-            builder += transform(this[i])
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            builder += transform(iterator.nextAt(i))
         }
         return builder.result()
     }
@@ -246,19 +268,38 @@ sealed class Chunk<out A> {
     @Suppress("UNCHECKED_CAST")
     open fun toArray(): Array<@UnsafeVariance A> {
         val result = arrayOfNulls<Any?>(size) as Array<A>
-        for (i in 0 until size) {
-            result[i] = this[i]
+        val iterator = chunkIterator()
+        for (i in 0 until iterator.length) {
+            result[i] = iterator.nextAt(i)
         }
         return result
     }
 
     fun toList(): List<A> = toArray().toList()
 
-    open fun toStringChunk(): String = buildString(size) {
-        for (i in 0 until size) {
-            append(this@Chunk[i].toString())
+    override operator fun iterator(): Iterator<A> {
+        val iterator = chunkIterator()
+        var index = 0
+        return object : Iterator<A> {
+            override fun hasNext(): Boolean = index < iterator.length
+
+            override fun next(): A {
+                if (!hasNext()) throw NoSuchElementException()
+                return iterator.nextAt(index++)
+            }
         }
     }
+
+    open fun toStringChunk(): String = buildString(size) {
+        val iterator = this@Chunk.chunkIterator()
+        for (i in 0 until iterator.length) {
+            append(iterator.nextAt(i).toString())
+        }
+    }
+
+    final override fun equals(other: Any?): Boolean = other is Chunk<*> && corresponds(other) { a, b -> a == b }
+
+    final override fun hashCode(): Int = foldLeft(1) { acc, value -> 31 * acc + (value?.hashCode() ?: 0) }
 
     override fun toString(): String = toList().joinToString(prefix = "Chunk(", postfix = ")")
 
@@ -285,7 +326,8 @@ sealed class Chunk<out A> {
         override fun chunkIterator(): ChunkIterator<Nothing> = EmptyChunkIterator
     }
 
-    class ArrayChunk<A>(val array: Array<A>) : NonEmpty<A>() {
+    @InternalDataApi
+    class ArrayChunk<A> @InternalDataApi constructor(val array: Array<A>) : NonEmpty<A>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -297,13 +339,10 @@ sealed class Chunk<out A> {
         override fun toArray(): Array<A> = array.copyOf()
 
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is ArrayChunk<*> && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class ByteArrayChunk(val array: ByteArray) : NonEmpty<Byte>() {
+    @InternalDataApi
+    class ByteArrayChunk @InternalDataApi constructor(val array: ByteArray) : NonEmpty<Byte>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -313,13 +352,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Byte> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is ByteArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class BooleanArrayChunk(val array: BooleanArray) : NonEmpty<Boolean>() {
+    @InternalDataApi
+    class BooleanArrayChunk @InternalDataApi constructor(val array: BooleanArray) : NonEmpty<Boolean>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -329,13 +365,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Boolean> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is BooleanArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class IntArrayChunk(val array: IntArray) : NonEmpty<Int>() {
+    @InternalDataApi
+    class IntArrayChunk @InternalDataApi constructor(val array: IntArray) : NonEmpty<Int>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -345,13 +378,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Int> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is IntArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class ShortArrayChunk(val array: ShortArray) : NonEmpty<Short>() {
+    @InternalDataApi
+    class ShortArrayChunk @InternalDataApi constructor(val array: ShortArray) : NonEmpty<Short>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -361,13 +391,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Short> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is ShortArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class LongArrayChunk(val array: LongArray) : NonEmpty<Long>() {
+    @InternalDataApi
+    class LongArrayChunk @InternalDataApi constructor(val array: LongArray) : NonEmpty<Long>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -377,13 +404,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Long> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is LongArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class FloatArrayChunk(val array: FloatArray) : NonEmpty<Float>() {
+    @InternalDataApi
+    class FloatArrayChunk @InternalDataApi constructor(val array: FloatArray) : NonEmpty<Float>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -393,13 +417,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Float> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is FloatArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class DoubleArrayChunk(val array: DoubleArray) : NonEmpty<Double>() {
+    @InternalDataApi
+    class DoubleArrayChunk @InternalDataApi constructor(val array: DoubleArray) : NonEmpty<Double>() {
         override val size: Int
             get() = array.size
         override val depth: Int = 1
@@ -409,13 +430,10 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<Double> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is DoubleArrayChunk && array.contentEquals(other.array)
-
-        override fun hashCode(): Int = array.contentHashCode()
     }
 
-    class StringChunk(val string: String) : NonEmpty<Char>() {
+    @InternalDataApi
+    class StringChunk @InternalDataApi constructor(val string: String) : NonEmpty<Char>() {
         override val size: Int
             get() = string.length
         override val depth: Int = 1
@@ -427,13 +445,10 @@ sealed class Chunk<out A> {
         override fun toStringChunk(): String = string
 
         override fun chunkIterator(): ChunkIterator<Char> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is StringChunk && string == other.string
-
-        override fun hashCode(): Int = string.hashCode()
     }
 
-    class Single<A>(val value: A) : NonEmpty<A>() {
+    @InternalDataApi
+    class Single<A> @InternalDataApi constructor(val value: A) : NonEmpty<A>() {
         override val size: Int = 1
         override val depth: Int = 1
 
@@ -445,26 +460,31 @@ sealed class Chunk<out A> {
         }
 
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is Single<*> && value == other.value
-
-        override fun hashCode(): Int = value?.hashCode() ?: 0
     }
 
-    class Concat<A>(val chunks: Array<Chunk<A>>) : NonEmpty<A>() {
+    @InternalDataApi
+    class Concat<A> @InternalDataApi constructor(val chunks: Array<Chunk<A>>) : NonEmpty<A>() {
         override val depth: Int by lazy { 1 + (chunks.maxOfOrNull { it.depth } ?: 0) }
         override val size: Int by lazy { chunks.sumOf { it.size } }
         override val concatDepth: Int by lazy { 1 + (chunks.maxOfOrNull { it.concatDepth } ?: 0) }
+        private val chunkEnds: IntArray by lazy {
+            val result = IntArray(chunks.size)
+            var total = 0
+            for (index in chunks.indices) {
+                total += chunks[index].size
+                result[index] = total
+            }
+            result
+        }
 
         override fun get(index: Int): A {
-            var remaining = index
-            for (chunk in chunks) {
-                if (remaining < chunk.size) {
-                    return chunk[remaining]
-                }
-                remaining -= chunk.size
+            if (index !in 0 until size) {
+                throw IndexOutOfBoundsException("Concat index=$index totalSize=$size")
             }
-            throw IndexOutOfBoundsException("Concat index=$index totalSize=$size")
+            val lookup = chunkEnds.binarySearchInt(index + 1)
+            val chunkIndex = if (lookup >= 0) lookup else -lookup - 1
+            val chunkStart = if (chunkIndex == 0) 0 else chunkEnds[chunkIndex - 1]
+            return chunks[chunkIndex][index - chunkStart]
         }
 
         override fun rebalance(): Chunk<A> {
@@ -472,25 +492,20 @@ sealed class Chunk<out A> {
             fun visit(chunk: Chunk<A>) {
                 when (chunk) {
                     is Concat -> chunk.chunks.forEach(::visit)
+                    Empty -> Unit
                     else -> flattened += chunk
                 }
             }
             chunks.forEach(::visit)
-            return when (flattened.size) {
-                0 -> Empty
-                1 -> flattened[0]
-                else -> Concat(flattened.toTypedArray())
-            }
+            return buildBalancedConcat(flattened, 0, flattened.size)
         }
 
-        override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
-
-        override fun equals(other: Any?): Boolean = other is Chunk<*> && corresponds(other) { a, b -> a == b }
-
-        override fun hashCode(): Int = foldLeft(1) { acc, value -> 31 * acc + (value?.hashCode() ?: 0) }
+        override fun chunkIterator(): ChunkIterator<A> = concatIteratorFor(chunks)
     }
 
-    class Slice<A>(val chunk: Chunk<A>, val offset: Int, val lengthSlice: Int) : NonEmpty<A>() {
+    @InternalDataApi
+    class Slice<A> @InternalDataApi constructor(val chunk: Chunk<A>, val offset: Int, val lengthSlice: Int) :
+        NonEmpty<A>() {
         override val size: Int
             get() = lengthSlice
         override val depth: Int
@@ -503,53 +518,45 @@ sealed class Chunk<out A> {
             return chunk[offset + index]
         }
 
-        override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
+        override fun chunkIterator(): ChunkIterator<A> = chunk.chunkIterator().sliceIterator(offset, lengthSlice)
     }
 
-    @OptIn(ExperimentalAtomicApi::class)
     internal class AppendN<A>(
         private val start: Chunk<A>,
-        internal val buffer: Array<Any?>,
-        initialUsed: Int,
-        private val used: AtomicInt = AtomicInt(initialUsed),
+        private val buffer: Array<Any?>,
+        private val used: Int,
     ) : NonEmpty<A>() {
         override val depth: Int
             get() = start.depth + 1
         override val size: Int
-            get() = start.size + used.load()
+            get() = start.size + used
 
         override fun get(index: Int): A {
             val startSize = start.size
-            val currentUsed = used.load()
             return when {
                 index < startSize -> start[index]
-                index - startSize < currentUsed -> buffer[index - startSize] as A
-                else -> throw IndexOutOfBoundsException("AppendN index=$index size=${startSize + currentUsed}")
+                index - startSize < used -> buffer[index - startSize] as A
+                else -> throw IndexOutOfBoundsException("AppendN index=$index size=${startSize + used}")
             }
         }
 
         override fun toArray(): Array<A> {
-            val currentUsed = used.load()
             @Suppress("UNCHECKED_CAST")
-            val result = arrayOfNulls<Any?>(start.size + currentUsed) as Array<A>
+            val result = arrayOfNulls<Any?>(start.size + used) as Array<A>
             start.toArray().copyInto(result, 0)
-            for (i in 0 until currentUsed) {
+            for (i in 0 until used) {
                 result[start.size + i] = buffer[i] as A
             }
             return result
         }
 
         fun appendOptimized(element: A): AppendN<A> {
-            while (true) {
-                val currentUsed = used.load()
-                if (currentUsed >= buffer.size) {
-                    return spillAndAppend(element, currentUsed)
-                }
-                if (used.compareAndSet(currentUsed, currentUsed + 1)) {
-                    buffer[currentUsed] = element
-                    return this
-                }
+            if (used >= buffer.size) {
+                return spillAndAppend(element, used)
             }
+            val newBuffer = buffer.copyOf()
+            newBuffer[used] = element
+            return AppendN(start, newBuffer, used + 1)
         }
 
         private fun spillAndAppend(element: A, currentUsed: Int): AppendN<A> {
@@ -563,50 +570,42 @@ sealed class Chunk<out A> {
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
     }
 
-    @OptIn(ExperimentalAtomicApi::class)
     internal class PrependN<A>(
         private val end: Chunk<A>,
         private val buffer: Array<Any?>,
-        initialUsed: Int,
-        private val used: AtomicInt = AtomicInt(initialUsed),
+        private val used: Int,
     ) : NonEmpty<A>() {
         override val depth: Int
             get() = end.depth + 1
         override val size: Int
-            get() = end.size + used.load()
+            get() = end.size + used
 
         override fun get(index: Int): A {
-            val currentUsed = used.load()
             return when {
-                index < currentUsed -> buffer[buffer.size - currentUsed + index] as A
-                index < end.size + currentUsed -> end[index - currentUsed]
-                else -> throw IndexOutOfBoundsException("PrependN index=$index size=${end.size + currentUsed}")
+                index < used -> buffer[buffer.size - used + index] as A
+                index < end.size + used -> end[index - used]
+                else -> throw IndexOutOfBoundsException("PrependN index=$index size=${end.size + used}")
             }
         }
 
         override fun toArray(): Array<A> {
-            val currentUsed = used.load()
             @Suppress("UNCHECKED_CAST")
-            val result = arrayOfNulls<Any?>(end.size + currentUsed) as Array<A>
-            val startIndex = buffer.size - currentUsed
-            for (i in 0 until currentUsed) {
+            val result = arrayOfNulls<Any?>(end.size + used) as Array<A>
+            val startIndex = buffer.size - used
+            for (i in 0 until used) {
                 result[i] = buffer[startIndex + i] as A
             }
-            end.toArray().copyInto(result, currentUsed)
+            end.toArray().copyInto(result, used)
             return result
         }
 
         fun prependOptimized(element: A): PrependN<A> {
-            while (true) {
-                val currentUsed = used.load()
-                if (currentUsed >= buffer.size) {
-                    return spillAndPrepend(element, currentUsed)
-                }
-                if (used.compareAndSet(currentUsed, currentUsed + 1)) {
-                    buffer[buffer.size - currentUsed - 1] = element
-                    return this
-                }
+            if (used >= buffer.size) {
+                return spillAndPrepend(element, used)
             }
+            val newBuffer = buffer.copyOf()
+            newBuffer[buffer.size - used - 1] = element
+            return PrependN(end, newBuffer, used + 1)
         }
 
         private fun spillAndPrepend(element: A, currentUsed: Int): PrependN<A> {
@@ -620,13 +619,11 @@ sealed class Chunk<out A> {
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
     }
 
-    @OptIn(ExperimentalAtomicApi::class)
     internal class Update<A>(
         private val chunk: Chunk<A>,
         private val bufferIndices: IntArray,
         private val bufferValues: Array<Any?>,
-        initialUsed: Int,
-        private val used: AtomicInt = AtomicInt(initialUsed),
+        private val used: Int,
     ) : NonEmpty<A>() {
         override val depth: Int
             get() = chunk.depth + 1
@@ -637,7 +634,7 @@ sealed class Chunk<out A> {
             if (index !in 0 until size) {
                 throw IndexOutOfBoundsException("Update index=$index size=$size")
             }
-            var i = used.load() - 1
+            var i = used - 1
             while (i >= 0) {
                 if (bufferIndices[i] == index) {
                     return bufferValues[i] as A
@@ -649,8 +646,7 @@ sealed class Chunk<out A> {
 
         override fun toArray(): Array<A> {
             val base = chunk.toArray()
-            val currentUsed = used.load()
-            for (i in 0 until currentUsed) {
+            for (i in 0 until used) {
                 base[bufferIndices[i]] = bufferValues[i] as A
             }
             return base
@@ -660,17 +656,14 @@ sealed class Chunk<out A> {
             if (index !in 0 until size) {
                 throw IndexOutOfBoundsException("Update index=$index size=$size")
             }
-            while (true) {
-                val currentUsed = used.load()
-                if (currentUsed >= bufferIndices.size) {
-                    return spillAndUpdate(index, value)
-                }
-                if (used.compareAndSet(currentUsed, currentUsed + 1)) {
-                    bufferIndices[currentUsed] = index
-                    bufferValues[currentUsed] = value
-                    return this
-                }
+            if (used >= bufferIndices.size) {
+                return spillAndUpdate(index, value)
             }
+            val newIndices = bufferIndices.copyOf()
+            val newValues = bufferValues.copyOf()
+            newIndices[used] = index
+            newValues[used] = value
+            return Update(chunk, newIndices, newValues, used + 1)
         }
 
         private fun spillAndUpdate(index: Int, value: A): Update<A> {
@@ -797,6 +790,87 @@ private class IndexedChunkIterator<A>(
     }
 }
 
+private class SlicedChunkIterator<A>(
+    private val delegate: ChunkIterator<A>,
+    private val offset: Int,
+    override val length: Int,
+) : ChunkIterator<A> {
+    override fun nextAt(index: Int): A {
+        if (index !in 0 until length) {
+            throw IndexOutOfBoundsException("ChunkIterator nextAt($index) length=$length")
+        }
+        return delegate.nextAt(offset + index)
+    }
+
+    override fun sliceIterator(offset: Int, length: Int): ChunkIterator<A> {
+        val start = offset.coerceIn(0, this.length)
+        val end = (offset + length).coerceIn(start, this.length)
+        val newLength = end - start
+        return if (newLength == 0) EmptyChunkIterator else SlicedChunkIterator(delegate, this.offset + start, newLength)
+    }
+}
+
+private class ConcatChunkIterator<A>(
+    private val children: Array<ChunkIterator<A>>,
+) : ChunkIterator<A> {
+    private val childOffsets = IntArray(children.size)
+    override val length: Int
+    private var cursorIndex: Int = 0
+
+    init {
+        var total = 0
+        for (index in children.indices) {
+            childOffsets[index] = total
+            total += children[index].length
+        }
+        length = total
+    }
+
+    override fun nextAt(index: Int): A {
+        if (index !in 0 until length) {
+            throw IndexOutOfBoundsException("ChunkIterator nextAt($index) length=$length")
+        }
+        val childIndex = childIndexFor(index)
+        return children[childIndex].nextAt(index - childOffsets[childIndex])
+    }
+
+    override fun sliceIterator(offset: Int, length: Int): ChunkIterator<A> {
+        val start = offset.coerceIn(0, this.length)
+        val end = (offset + length).coerceIn(start, this.length)
+        val newLength = end - start
+        return if (newLength == 0) EmptyChunkIterator else SlicedChunkIterator(this, start, newLength)
+    }
+
+    private fun childIndexFor(index: Int): Int {
+        if (children.size == 1) {
+            return 0
+        }
+
+        val currentStart = childOffsets[cursorIndex]
+        val currentEnd = if (cursorIndex == children.lastIndex) length else childOffsets[cursorIndex + 1]
+        if (index in currentStart until currentEnd) {
+            return cursorIndex
+        }
+
+        if (index > currentStart) {
+            var candidate = cursorIndex + 1
+            while (candidate < children.size) {
+                val candidateEnd = if (candidate == children.lastIndex) length else childOffsets[candidate + 1]
+                if (index < candidateEnd) {
+                    cursorIndex = candidate
+                    return candidate
+                }
+                candidate += 1
+            }
+        }
+
+        val lookup = childOffsets.binarySearchInt(index)
+        val resolved = if (lookup >= 0) lookup else (-lookup - 2).coerceAtLeast(0)
+        cursorIndex = resolved
+        return resolved
+    }
+}
+
 private fun <A> List<A>.toChunkArray(): Array<A> {
     @Suppress("UNCHECKED_CAST")
     val result = arrayOfNulls<Any?>(size) as Array<A>
@@ -808,6 +882,54 @@ private fun <A> List<A>.toChunkArray(): Array<A> {
 
 private const val APPEND_PREPEND_BUFFER_CAPACITY = 64
 private const val UPDATE_BUFFER_CAPACITY = 256
+
+private fun IntArray.binarySearchInt(value: Int): Int {
+    var low = 0
+    var high = size - 1
+
+    while (low <= high) {
+        val middle = (low + high).ushr(1)
+        val middleValue = this[middle]
+        when {
+            middleValue < value -> low = middle + 1
+            middleValue > value -> high = middle - 1
+            else -> return middle
+        }
+    }
+
+    return -(low + 1)
+}
+
+private fun <A> buildBalancedConcat(chunks: List<Chunk<A>>, start: Int, end: Int): Chunk<A> =
+    when (end - start) {
+        0 -> Chunk.empty()
+        1 -> chunks[start]
+        2 -> Chunk.Concat(arrayOf(chunks[start], chunks[start + 1]))
+        else -> {
+            val middle = start + (end - start) / 2
+            Chunk.Concat(arrayOf(buildBalancedConcat(chunks, start, middle), buildBalancedConcat(chunks, middle, end)))
+        }
+    }
+
+private fun <A> concatIteratorFor(chunks: Array<Chunk<A>>): ChunkIterator<A> {
+    val iterators = ArrayList<ChunkIterator<A>>(chunks.size)
+
+    fun visit(chunk: Chunk<A>) {
+        when (chunk) {
+            is Chunk.Concat -> chunk.chunks.forEach(::visit)
+            Chunk.Empty -> Unit
+            else -> iterators += chunk.chunkIterator()
+        }
+    }
+
+    chunks.forEach(::visit)
+
+    return when (iterators.size) {
+        0 -> Chunk.empty<A>().chunkIterator()
+        1 -> iterators[0]
+        else -> ConcatChunkIterator(iterators.toTypedArray())
+    }
+}
 
 private fun <A> arrayChunkFromBuffer(buffer: Array<Any?>, used: Int): Chunk.ArrayChunk<A> {
     @Suppress("UNCHECKED_CAST")
