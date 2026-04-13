@@ -115,6 +115,4 @@ sealed class Validated<out E, out A> {
     }
 }
 
-private class AbortValidation : CancellationException("Validated.run aborted") {
-    override fun fillInStackTrace(): Throwable = this
-}
+private class AbortValidation : CancellationException("Validated.run aborted")
