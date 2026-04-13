@@ -9,9 +9,30 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Persistent leftist min-heap.
+ *
+ * This heap is immutable and persistent: [insert], [merge], and [deleteMin] return new heap values
+ * without mutating earlier ones. Equality, hashing, and serialization are based on logical sorted
+ * contents rather than tree shape.
+ *
+ * Complexity notes:
+ * - [findMin] is O(1)
+ * - [insert], [merge], and [deleteMin] are O(log n)
+ * - [size] is O(1)
+ * - equality, hashing, and serialization are O(n log n) because they normalize via sorted contents
+ *
+ * Exception contracts:
+ * - [findMin] throws [NoSuchElementException] on an empty heap
+ * - [deleteMin] throws [IllegalStateException] on an empty heap
+ */
 @Serializable(with = LeftistHeap.TypeSerializer::class)
 sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
-    data object Empty : LeftistHeap<Nothing>()
+    abstract val size: Int
+
+    data object Empty : LeftistHeap<Nothing>() {
+        override val size: Int = 0
+    }
 
     @InternalDataApi
     class Node<E : Comparable<E>> @InternalDataApi constructor(
@@ -19,14 +40,9 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
         val value: E,
         val left: LeftistHeap<E>,
         val right: LeftistHeap<E>,
-    ) : LeftistHeap<E>()
-
-    val size: Int
-        get() =
-            when (this) {
-                is Empty -> 0
-                is Node -> 1 + left.size + right.size
-            }
+    ) : LeftistHeap<E>() {
+        override val size: Int = 1 + left.size + right.size
+    }
 
     fun findMin(): E =
         when (this) {
@@ -127,48 +143,3 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
         }
     }
 }
-
-// sealed class Accum<out V> {
-//    object Empty : Accum<Nothing>()
-//    data class C1<V>(val b: V) : Accum<V>()
-//    data class C2<V>(val b: V, val c: V, val bc: Need<V>, val rest: Accum<V>) : Accum<V>()
-//    data class C3<V>(val b: V, val c: V, val d: V, val bc: Need<V>, val rest: Accum<V>) :
-// Accum<V>()
-//
-//    fun cons(a: @UnsafeVariance V, app: (V, V) -> @UnsafeVariance V): Accum<V> {
-//        return when (this) {
-//            Empty -> C1(a)
-//            is C1 -> C2(a, this.b, Need.apply { app(a, this.b) }, Empty)
-//            is C2 -> C3(a, this.b, this.c, this.bc, this.rest)
-//            is C3 -> C2(a, this.bc.value, Need.apply { app(a, this.bc.value) },
-// this.rest.cons(this.d, app))
-//        }
-//    }
-//    fun <R> query(inj: (V) -> R, combine: (R, Need<R>) -> Need<R>, empty: R): Need<R> {
-//        return when (this) {
-//            is Empty -> Need.now(empty)
-//            is C1 -> Need.apply { inj(this.b) }
-//            is C2 -> combine(inj(this.b), Need.apply { inj(this.c) }.flatMap { rc -> combine(rc,
-// this.rest.query(inj, combine, empty)) })
-//            is C3 -> combine(inj(this.b), Need.apply { inj(this.c) }.flatMap { rc -> combine(rc,
-// Need.apply { inj(this.d) }.flatMap { rd -> combine(rd, this.rest.query(inj, combine, empty)) }
-// )})
-//        }
-//    }
-// }
-//
-// data class Set<V : Any>(val underlying: Accum<Entry<V>>) {
-//    data class Entry<V : Any>(val values: Array<V>, val bitSet: BitSet) {
-//        fun merge(that: Entry<V>): Entry<V> {
-//            val N = this.values.size + that.values.size
-//            val array = arrayOfNulls(N)
-//            for (i in 0 until this.values.size) {
-//                for (j in 0 until that.values.size) {
-//
-//                }
-//            }
-//        }
-//    }
-//
-//    fun cons(v: V): Set<V> = Set(underlying.cons(v))
-// }

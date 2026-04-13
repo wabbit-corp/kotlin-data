@@ -4,8 +4,7 @@ import kotlin.jvm.JvmField
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.FloatArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -105,15 +104,15 @@ class FloatBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     class TypeSerializer : KSerializer<FloatBuffer> {
-        private val listSerializer = ListSerializer(Float.serializer())
-        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        private val arraySerializer = FloatArraySerializer()
+        override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: FloatBuffer) {
-            encoder.encodeSerializableValue(listSerializer, value.toList())
+            encoder.encodeSerializableValue(arraySerializer, value.toFloatArray())
         }
 
         override fun deserialize(decoder: Decoder): FloatBuffer =
-            FloatBuffer(decoder.decodeSerializableValue(listSerializer).toFloatArray())
+            FloatBuffer(decoder.decodeSerializableValue(arraySerializer))
     }
 
     // /////////////////////////////////////////////////////////////////////////

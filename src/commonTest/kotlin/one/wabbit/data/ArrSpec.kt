@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ArrSpec {
     @Test
@@ -19,6 +20,16 @@ class ArrSpec {
 
         assertEquals(listOf(1, 2, null), arr.toList())
         assertEquals(hash, arr.hashCode())
+    }
+
+    @Test
+    fun `arr fromArray does not alias caller array`() {
+        val backing = arrayOf<Any?>(1, 2, null)
+        val arr = Arr.fromArray(backing)
+
+        backing[1] = 20
+
+        assertEquals(listOf(1, 2, null), arr.toList())
     }
 
     @Test
@@ -65,6 +76,33 @@ class ArrSpec {
     }
 
     @Test
+    fun `arr exposes list style search and slicing helpers`() {
+        val arr = arrOf(1, 2, 3, 2)
+
+        assertTrue(arr.contains(2))
+        assertFalse(arr.contains(9))
+        assertTrue(arr.containsAll(listOf(1, 2)))
+        assertFalse(arr.containsAll(listOf(1, 9)))
+        assertEquals(1, arr.indexOf(2))
+        assertEquals(3, arr.lastIndexOf(2))
+        assertEquals(-1, arr.indexOf(9))
+        assertEquals(listOf(2, 3), arr.subList(1, 3).toList())
+        assertEquals(listOf(2, 3, 2), arr.listIterator(1).asSequence().toList())
+    }
+
+    @Test
+    fun `arr listIterator validates bounds`() {
+        val arr = arrOf(1, 2, 3)
+
+        assertFailsWith<IndexOutOfBoundsException> {
+            arr.listIterator(-1)
+        }
+        assertFailsWith<IndexOutOfBoundsException> {
+            arr.listIterator(4)
+        }
+    }
+
+    @Test
     fun `arrMap factory does not alias caller input and cached hash stays coherent`() {
         val source = linkedMapOf("a" to 1)
         val map = ArrMap.from(source)
@@ -102,5 +140,19 @@ class ArrSpec {
     @Test
     fun `arrMap publishes its tiny map size envelope`() {
         assertEquals(16, ArrMap.RECOMMENDED_MAX_SIZE)
+    }
+
+    @Test
+    fun `arrMap remove clear keys and values work`() {
+        val map = ArrMap.from(linkedMapOf("a" to 1, "b" to 2, "c" to 3))
+
+        val removed = map.remove("b")
+
+        assertEquals(mapOf("a" to 1, "c" to 3), removed.toMap())
+        assertEquals(mapOf("a" to 1, "b" to 2, "c" to 3), map.toMap())
+        assertTrue(removed.remove("missing") === removed)
+        assertTrue(map.clear().isEmpty())
+        assertEquals(listOf("a", "b", "c"), map.keys().toList())
+        assertEquals(listOf(1, 2, 3), map.values().toList())
     }
 }

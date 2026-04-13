@@ -2,12 +2,32 @@ package one.wabbit.data
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.FloatArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Mutable ring-buffer deque for primitive floats.
+ *
+ * The deque owns its internal buffer. Constructors and bulk push operations copy values into that
+ * buffer, so the deque never aliases caller-provided arrays or other deque storage. This type is
+ * mutable; methods such as `push*`, `pop*`, `set`, and [clear] update the receiver in place.
+ *
+ * Complexity notes:
+ * - [peekFirst], [peekLast], [get], and [set] are O(1)
+ * - single-element push/pop operations are amortized O(1)
+ * - bulk push/pop operations are O(n) in the number of affected elements
+ * - resizing copies all elements and is therefore O(size)
+ *
+ * Exception contracts:
+ * - [peekFirst], [peekLast], [popFirst], and [popLast] throw [NoSuchElementException] on an empty
+ *   deque
+ * - [get], [set], [popFirst(count)], and [popLast(count)] throw [IndexOutOfBoundsException] for
+ *   invalid indices or counts
+ *
+ * Negative indexing is never supported. Negative counts are rejected rather than clamped.
+ */
 @Serializable(with = FloatDeque.TypeSerializer::class)
 class FloatDeque(initialCapacity: Int = 16) {
     private var capacity: Int = initialCapacity
@@ -252,18 +272,18 @@ class FloatDeque(initialCapacity: Int = 16) {
     val length: Int
         get() = usedSize
 
-    /** Serializer: just store it as a List<Float> internally. */
+    /** Serializer: store it using the primitive array serializer to avoid boxing every element. */
     class TypeSerializer : KSerializer<FloatDeque> {
-        private val listSerializer = ListSerializer(Float.serializer())
-        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        private val arraySerializer = FloatArraySerializer()
+        override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: FloatDeque) {
-            encoder.encodeSerializableValue(listSerializer, value.toList())
+            encoder.encodeSerializableValue(arraySerializer, value.toFloatArray())
         }
 
         override fun deserialize(decoder: Decoder): FloatDeque {
-            val list = decoder.decodeSerializableValue(listSerializer)
-            return FloatDeque(list.toFloatArray())
+            val array = decoder.decodeSerializableValue(arraySerializer)
+            return FloatDeque(array)
         }
     }
 

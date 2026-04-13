@@ -158,6 +158,36 @@ class ChunkSpec {
     }
 
     @Test
+    fun `indexWhere handles concat heavy chunks from an offset`() {
+        val chunk = Chunk.Concat(
+            arrayOf(
+                chunkOf(10, 20),
+                chunkOf(30),
+                chunkOf(40, 50),
+                chunkOf(60),
+            ),
+        )
+
+        assertEquals(2, chunk.indexWhere({ it == 30 }))
+        assertEquals(4, chunk.indexWhere({ it == 50 }, from = 3))
+        assertEquals(-1, chunk.indexWhere({ it == 20 }, from = 2))
+    }
+
+    @Test
+    fun `foldRight preserves order across concat heavy chunks`() {
+        val chunk = Chunk.Concat(
+            arrayOf(
+                chunkOf(1, 2),
+                chunkOf(3),
+                chunkOf(4, 5),
+                chunkOf(6),
+            ),
+        )
+
+        assertEquals("123456", chunk.foldRight("") { value, acc -> value.toString() + acc })
+    }
+
+    @Test
     fun `rebalance builds a balanced concat tree instead of a flat wide node`() {
         val leaves = (0 until 8).map { chunkOf(it) }
         val nested = Chunk.Concat(

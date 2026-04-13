@@ -4,6 +4,30 @@ package one.wabbit.data
 
 import kotlin.math.abs
 
+/**
+ * Persistent indexed chunk sequence with cheap concatenation.
+ *
+ * [Chunk] is immutable and persistent: append, prepend, update, slice, and concatenation return
+ * new chunk values and leave earlier chunks unchanged. Factory methods copy caller-owned arrays,
+ * so the resulting chunk does not alias external mutable storage.
+ *
+ * Complexity notes:
+ * - [append], [prepend], and concatenation are optimized for incremental construction
+ * - indexed access is O(1) on leaf chunks and logarithmic to linear on concat-heavy shapes
+ * - iterator-driven traversals such as [map], [filter], [foldLeft], [exists], and [forall] are
+ *   linear in the number of elements
+ * - [toArray] materializes the chunk and is O(n)
+ *
+ * Bounds and clamping semantics:
+ * - negative indexing is never supported; [get], [update], and [indexWhere] with a negative
+ *   `from` throw [IndexOutOfBoundsException]
+ * - [drop], [dropRight], [take], and [takeRight] clamp counts rather than throwing
+ * - [slice] clamps both bounds into `0..size` and returns the half-open range `[from, until)`
+ *
+ * Exception contracts:
+ * - [head] throws on empty chunks
+ * - [get] and [update] throw [IndexOutOfBoundsException] for invalid indices
+ */
 sealed class Chunk<out A> : Iterable<A> {
     abstract val size: Int
     internal abstract val depth: Int
@@ -64,6 +88,12 @@ sealed class Chunk<out A> : Iterable<A> {
             }
         }
 
+    /**
+     * Drops the first [n] elements.
+     *
+     * Negative counts clamp to zero. Counts greater than or equal to [size] return the empty
+     * chunk.
+     */
     fun drop(n: Int): Chunk<A> =
         when {
             n <= 0 -> this
@@ -71,6 +101,12 @@ sealed class Chunk<out A> : Iterable<A> {
             else -> Slice(this, n, size - n)
         }
 
+    /**
+     * Drops the last [n] elements.
+     *
+     * Negative counts clamp to zero. Counts greater than or equal to [size] return the empty
+     * chunk.
+     */
     fun dropRight(n: Int): Chunk<A> =
         when {
             n <= 0 -> this
@@ -92,6 +128,12 @@ sealed class Chunk<out A> : Iterable<A> {
         return drop(i)
     }
 
+    /**
+     * Keeps the first [n] elements.
+     *
+     * Negative counts return the empty chunk. Counts greater than or equal to [size] return this
+     * chunk unchanged.
+     */
     fun take(n: Int): Chunk<A> =
         when {
             n <= 0 -> Empty
@@ -99,6 +141,12 @@ sealed class Chunk<out A> : Iterable<A> {
             else -> Slice(this, 0, n)
         }
 
+    /**
+     * Keeps the last [n] elements.
+     *
+     * Negative counts return the empty chunk. Counts greater than or equal to [size] return this
+     * chunk unchanged.
+     */
     fun takeRight(n: Int): Chunk<A> =
         when {
             n <= 0 -> Empty
@@ -149,10 +197,20 @@ sealed class Chunk<out A> : Iterable<A> {
     fun lastOption(): Option<@UnsafeVariance A> =
         if (isEmpty()) None else Some(this[size - 1])
 
+    /**
+     * Returns the first index at or after [from] whose element matches [predicate], or `-1`.
+     *
+     * Negative [from] values are rejected with [IndexOutOfBoundsException]. Values greater than or
+     * equal to [size] simply return `-1`.
+     */
     fun indexWhere(predicate: (A) -> Boolean, from: Int = 0): Int {
+        if (from < 0) {
+            throw IndexOutOfBoundsException("Chunk indexWhere from=$from size=$size")
+        }
+        val iterator = chunkIterator()
         var i = from
-        while (i < size) {
-            if (predicate(this[i])) {
+        while (i < iterator.length) {
+            if (predicate(iterator.nextAt(i))) {
                 return i
             }
             i += 1
@@ -208,8 +266,9 @@ sealed class Chunk<out A> : Iterable<A> {
 
     fun <S> foldRight(s0: S, f: (A, S) -> S): S {
         var acc = s0
-        for (i in size - 1 downTo 0) {
-            acc = f(this[i], acc)
+        val values = toArray()
+        for (i in values.lastIndex downTo 0) {
+            acc = f(values[i], acc)
         }
         return acc
     }
@@ -247,6 +306,12 @@ sealed class Chunk<out A> : Iterable<A> {
         return builder.result()
     }
 
+    /**
+     * Returns the half-open range `[from, until)`.
+     *
+     * Both bounds are clamped into `0..size`, and `until` is clamped so it is never less than the
+     * effective start. That means negative bounds do not throw.
+     */
     fun slice(from: Int, until: Int): Chunk<A> {
         val start = from.coerceIn(0, size)
         val end = until.coerceIn(start, size)

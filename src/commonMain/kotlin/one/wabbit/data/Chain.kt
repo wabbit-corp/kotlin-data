@@ -8,6 +8,24 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Persistent concatenation-friendly sequence.
+ *
+ * [Chain] is immutable and persistent. Concatenation, [prepend], and [append] create new chain
+ * values without mutating earlier ones. Equality and hashing are logical and based on the flattened
+ * element sequence.
+ *
+ * Complexity notes:
+ * - concatenation is O(1)
+ * - [toList] and [toArray] are O(n)
+ * - equality, hashing, and serialization are O(n)
+ *
+ * Aliasing guarantees:
+ * - [of] copies vararg input into owned storage
+ * - [wrapList] and [wrapArray] are explicit view-style adapters and alias caller-provided storage
+ *
+ * Negative indexing is not applicable because this type does not expose indexed access.
+ */
 @Serializable(with = Chain.TypeSerializer::class)
 class Chain<out A> private constructor(private val value: Any?, val length: Int, private val depth: Int) {
     private object Empty
@@ -72,7 +90,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
         }
 
         override fun deserialize(decoder: Decoder): Chain<E> =
-            Chain.fromList(listSerializer.deserialize(decoder))
+            Chain.wrapList(listSerializer.deserialize(decoder))
     }
 
     companion object {
@@ -82,9 +100,21 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
 
         fun <A> of(vararg value: A): Chain<A> = Chain(WrapArray(value), value.size, 1)
 
-        fun <A> fromArray(value: Array<A>): Chain<A> = Chain(WrapArray(value), value.size, 1)
+        /**
+         * Wraps [value] without copying it.
+         *
+         * This aliases the caller-provided array, so later mutations to [value] are reflected by
+         * the returned chain.
+         */
+        fun <A> wrapArray(value: Array<A>): Chain<A> = Chain(WrapArray(value), value.size, 1)
 
-        fun <A> fromList(value: List<A>): Chain<A> = Chain(WrapList(value), value.size, 1)
+        /**
+         * Wraps [value] without copying it.
+         *
+         * This aliases the caller-provided list, so later mutations to the underlying list are
+         * reflected by the returned chain.
+         */
+        fun <A> wrapList(value: List<A>): Chain<A> = Chain(WrapList(value), value.size, 1)
 
         private fun unsafeAppendToH(cord: Any?, rights: Array<Any?>, out: (Int, Any?) -> Unit) {
             var current: Any? = cord

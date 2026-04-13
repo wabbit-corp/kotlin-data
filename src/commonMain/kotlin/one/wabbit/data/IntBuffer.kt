@@ -4,8 +4,7 @@ import kotlin.jvm.JvmField
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.IntArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -105,15 +104,15 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     class TypeSerializer : KSerializer<IntBuffer> {
-        private val listSerializer = ListSerializer(Int.serializer())
-        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        private val arraySerializer = IntArraySerializer()
+        override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: IntBuffer) {
-            encoder.encodeSerializableValue(listSerializer, value.toList())
+            encoder.encodeSerializableValue(arraySerializer, value.toIntArray())
         }
 
         override fun deserialize(decoder: Decoder): IntBuffer =
-            IntBuffer(decoder.decodeSerializableValue(listSerializer).toIntArray())
+            IntBuffer(decoder.decodeSerializableValue(arraySerializer))
     }
 
     // /////////////////////////////////////////////////////////////////////////

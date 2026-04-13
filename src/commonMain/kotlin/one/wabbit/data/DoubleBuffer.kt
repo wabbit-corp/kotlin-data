@@ -4,8 +4,7 @@ import kotlin.jvm.JvmField
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.DoubleArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -105,15 +104,15 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     class TypeSerializer : KSerializer<DoubleBuffer> {
-        private val listSerializer = ListSerializer(Double.serializer())
-        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        private val arraySerializer = DoubleArraySerializer()
+        override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: DoubleBuffer) {
-            encoder.encodeSerializableValue(listSerializer, value.toList())
+            encoder.encodeSerializableValue(arraySerializer, value.toDoubleArray())
         }
 
         override fun deserialize(decoder: Decoder): DoubleBuffer =
-            DoubleBuffer(decoder.decodeSerializableValue(listSerializer).toDoubleArray())
+            DoubleBuffer(decoder.decodeSerializableValue(arraySerializer))
     }
 
     // /////////////////////////////////////////////////////////////////////////

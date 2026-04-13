@@ -4,8 +4,7 @@ import kotlin.jvm.JvmField
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.BooleanArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -105,15 +104,15 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     }
 
     class TypeSerializer : KSerializer<BooleanBuffer> {
-        private val listSerializer = ListSerializer(Boolean.serializer())
-        override val descriptor: SerialDescriptor = listSerializer.descriptor
+        private val arraySerializer = BooleanArraySerializer()
+        override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
         override fun serialize(encoder: Encoder, value: BooleanBuffer) {
-            encoder.encodeSerializableValue(listSerializer, value.toList())
+            encoder.encodeSerializableValue(arraySerializer, value.toBooleanArray())
         }
 
         override fun deserialize(decoder: Decoder): BooleanBuffer =
-            BooleanBuffer(decoder.decodeSerializableValue(listSerializer).toBooleanArray())
+            BooleanBuffer(decoder.decodeSerializableValue(arraySerializer))
     }
 
     // /////////////////////////////////////////////////////////////////////////

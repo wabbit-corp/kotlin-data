@@ -1,4 +1,5 @@
 @file:Suppress("ReplaceRangeToWithRangeUntil", "OVERRIDE_BY_INLINE")
+@file:OptIn(InternalDataApi::class)
 
 package one.wabbit.data
 
@@ -8,10 +9,31 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Compact immutable array-backed sequence.
+ *
+ * This type owns its storage. The public constructor and [fromArray] always copy the caller's
+ * array, so later external mutation cannot affect the resulting [Arr]. Internal update operations
+ * return new [Arr] values and leave earlier instances unchanged.
+ *
+ * Complexity notes:
+ * - indexed reads are O(1)
+ * - [first], [last], [firstOrNull], [lastOrNull], [contains], [indexOf], and [lastIndexOf] are O(n)
+ * - [map], [update], [plus], and [subList] allocate and copy, so they are O(n)
+ *
+ * Exception contracts:
+ * - [first] and [last] throw [NoSuchElementException] on an empty array
+ * - indexed operations such as [get], [update], [listIterator], and [subList] throw
+ *   [IndexOutOfBoundsException] for out-of-range indices
+ *
+ * Negative indexing is never supported.
+ */
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = Arr.TypeSerializer::class)
-class Arr<out T>(unsafe: Array<Any?>) {
-    private val unsafe: Array<Any?> = unsafe.copyOf()
+class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership) {
+    constructor(unsafe: Array<Any?>) : this(unsafe.copyOf(), UnsafeOwnership)
+
+    private val unsafe: Array<Any?> = unsafe
 
     private fun requireElement(): Unit =
         if (unsafe.isEmpty()) {
@@ -55,7 +77,7 @@ class Arr<out T>(unsafe: Array<Any?>) {
         for (i in 0..size - 1) {
             newArr[i] = f(unsafe[i] as T)
         }
-        return Arr(newArr)
+        return unsafeWrapOwned(newArr)
     }
 
     fun <U : Any> mapOrNull(f: (T) -> U?): Arr<U>? {
@@ -67,7 +89,7 @@ class Arr<out T>(unsafe: Array<Any?>) {
             if (r == null) return null
             newArr[i] = r
         }
-        return Arr(newArr)
+        return unsafeWrapOwned(newArr)
     }
 
     fun all(predicate: (T) -> Boolean): Boolean {
@@ -124,58 +146,88 @@ class Arr<out T>(unsafe: Array<Any?>) {
 
     fun toList(): List<T> = unsafe.toList() as List<T>
 
-    //    override fun containsAll(elements: Collection<T>): Boolean =
-    //        elements.all { contains(it) }
-    //
-    //    override fun contains(element: T): Boolean =
-    //        unsafe.contains(element)
-    //
-    //    @Suppress("UNCHECKED_CAST")
-    //    override operator fun get(index: Int): T =
-    //        unsafe[index] as T
-    //
-    //    override fun isEmpty(): Boolean =
-    //        unsafe.isEmpty()
-    //
-    //    @Suppress("UNCHECKED_CAST")
-    //    override fun iterator(): Iterator<T> =
-    //        unsafe.iterator() as Iterator<T>
-    //
-    //    override fun listIterator(): ListIterator<T> =
-    //        listIterator(0)
-    //
-    //    override fun listIterator(index: Int): ListIterator<T> {
-    //        val initialIndex = index
-    //        return object : ListIterator<T> {
-    //            private var index = initialIndex
-    //            override fun hasNext(): Boolean = this.index < size
-    //            override fun next(): T = get(this.index++)
-    //            override fun hasPrevious(): Boolean = this.index > 0
-    //            override fun previous(): T = get(--this.index)
-    //            override fun nextIndex(): Int = this.index
-    //            override fun previousIndex(): Int = this.index - 1
-    //        }
-    //    }
-    //
-    //    override fun subList(fromIndex: Int, toIndex: Int): List<T> =
-    //        Arr(unsafe.copyOfRange(fromIndex, toIndex))
-    //
-    //    override fun lastIndexOf(element: T): Int =
-    //        unsafe.lastIndexOf(element)
-    //
-    //    override fun indexOf(element: T): Int =
-    //        unsafe.indexOf(element)
+    fun contains(element: @UnsafeVariance T): Boolean = indexOf(element) >= 0
+
+    fun containsAll(elements: Collection<@UnsafeVariance T>): Boolean = elements.all(::contains)
+
+    fun listIterator(): ListIterator<T> = listIterator(0)
+
+    /**
+     * Returns a bidirectional iterator starting at [index].
+     *
+     * Valid start positions are in `0..size`, inclusive of `size`.
+     */
+    fun listIterator(index: Int): ListIterator<T> {
+        if (index !in 0..size) {
+            throw IndexOutOfBoundsException("Index $index out of bounds for size $size")
+        }
+        return object : ListIterator<T> {
+            private var position = index
+
+            override fun hasNext(): Boolean = position < size
+
+            override fun next(): T {
+                if (!hasNext()) throw NoSuchElementException()
+                return get(position++)
+            }
+
+            override fun hasPrevious(): Boolean = position > 0
+
+            override fun previous(): T {
+                if (!hasPrevious()) throw NoSuchElementException()
+                return get(--position)
+            }
+
+            override fun nextIndex(): Int = position
+
+            override fun previousIndex(): Int = position - 1
+        }
+    }
+
+    /**
+     * Returns a copied slice in the half-open range `[fromIndex, toIndex)`.
+     *
+     * Unlike [Chunk.slice], this does not clamp. Both bounds must already lie in `0..size` and
+     * satisfy `fromIndex <= toIndex`.
+     */
+    fun subList(fromIndex: Int, toIndex: Int): Arr<T> {
+        if (fromIndex !in 0..size) {
+            throw IndexOutOfBoundsException("fromIndex $fromIndex out of bounds for size $size")
+        }
+        if (toIndex !in fromIndex..size) {
+            throw IndexOutOfBoundsException("toIndex $toIndex out of bounds for size $size")
+        }
+        return unsafeWrapOwned(unsafe.copyOfRange(fromIndex, toIndex))
+    }
+
+    fun lastIndexOf(element: @UnsafeVariance T): Int {
+        for (index in unsafe.lastIndex downTo 0) {
+            if (unsafe[index] == element) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    fun indexOf(element: @UnsafeVariance T): Int {
+        for (index in unsafe.indices) {
+            if (unsafe[index] == element) {
+                return index
+            }
+        }
+        return -1
+    }
 
     fun update(index: Int, value: @UnsafeVariance T): Arr<T> {
         val idx = requireIndex(index)
-        return Arr(unsafe.copyOf().apply { this[idx] = value })
+        return unsafeWrapOwned(unsafe.copyOf().apply { this[idx] = value })
     }
 
     operator fun plus(other: Arr<@UnsafeVariance T>): Arr<T> {
         val newArr = arrayOfNulls<Any?>(unsafe.size + other.unsafe.size)
         unsafe.copyInto(newArr, endIndex = unsafe.size)
         other.unsafe.copyInto(newArr, destinationOffset = unsafe.size, endIndex = other.unsafe.size)
-        return Arr(newArr)
+        return unsafeWrapOwned(newArr)
     }
 
     private var _hashCode: Long = 0x100000000L
@@ -219,9 +271,6 @@ class Arr<out T>(unsafe: Array<Any?>) {
 
     override fun toString(): String = "Arr(${unsafe.joinToString(", ")})"
 
-    //    override fun clone(): Arr<T> =
-    //        Arr(unsafe)
-
     class TypeSerializer<A>(val valueSerializer: KSerializer<A>) : KSerializer<Arr<A>> {
         override val descriptor = ListSerializer(valueSerializer).descriptor
 
@@ -230,23 +279,43 @@ class Arr<out T>(unsafe: Array<Any?>) {
         }
 
         override fun deserialize(decoder: Decoder): Arr<A> =
-            Arr(decoder.decodeSerializableValue(ListSerializer(valueSerializer)).toTypedArray())
+            fromList(decoder.decodeSerializableValue(ListSerializer(valueSerializer)))
     }
 
     companion object {
-        private val EMPTY = Arr<Nothing>(emptyArray<Any?>())
+        private object UnsafeOwnership
+
+        @InternalDataApi
+        internal fun <T> unsafeWrapOwned(unsafe: Array<Any?>): Arr<T> = Arr(unsafe, UnsafeOwnership)
+
+        private val EMPTY = unsafeWrapOwned<Nothing>(emptyArray<Any?>())
 
         fun <T> empty(): Arr<T> = EMPTY as Arr<T>
 
-        fun <T> of(t: T): Arr<T> = Arr(arrayOf(t))
+        fun <T> of(t: T): Arr<T> = unsafeWrapOwned(arrayOf(t))
 
-        fun <T> of(t1: T, t2: T): Arr<T> = Arr(arrayOf(t1, t2))
+        fun <T> of(t1: T, t2: T): Arr<T> = unsafeWrapOwned(arrayOf(t1, t2))
 
-        fun <T> of(t1: T, t2: T, t3: T): Arr<T> = Arr(arrayOf(t1, t2, t3))
+        fun <T> of(t1: T, t2: T, t3: T): Arr<T> = unsafeWrapOwned(arrayOf(t1, t2, t3))
 
-        @Suppress("UNCHECKED_CAST") fun <T> of(vararg ts: T): Arr<T> = Arr(ts as Array<Any?>)
+        @Suppress("UNCHECKED_CAST")
+        fun <T> of(vararg ts: T): Arr<T> = unsafeWrapOwned(ts as Array<Any?>)
 
-        fun <T> fromList(list: List<T>): Arr<T> = Arr(list.toTypedArray<Any?>())
+        /**
+         * Creates an immutable array value by copying [array].
+         */
+        fun <T> fromArray(array: Array<out T>): Arr<T> {
+            @Suppress("UNCHECKED_CAST")
+            return unsafeWrapOwned(array.copyOf() as Array<Any?>)
+        }
+
+        fun <T> fromList(list: List<T>): Arr<T> {
+            val owned = arrayOfNulls<Any?>(list.size)
+            for (i in list.indices) {
+                owned[i] = list[i]
+            }
+            return unsafeWrapOwned(owned)
+        }
     }
 }
 

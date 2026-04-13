@@ -7,6 +7,26 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Persistent amortized O(1) FIFO queue implemented as a banker's queue.
+ *
+ * The queue is immutable and persistent: enqueue/dequeue operations return new queue values and do
+ * not mutate earlier instances. Equality, hashing, and serialization are defined in terms of the
+ * logical dequeue order rather than the internal left/right representation.
+ *
+ * Complexity notes:
+ * - [enqueue], [snoc], [dequeue], and [uncons] are amortized O(1)
+ * - [size], [frontSize], and [backSize] are O(1)
+ * - equality, hashing, and serialization are O(n)
+ *
+ * Exception contracts:
+ * - this type does not throw on empty dequeue; [dequeue] and [uncons] return `null` inside [Need]
+ *   and [dequeueOrNull] returns `null`
+ *
+ * Naming:
+ * - [enqueue] and [snoc] are aliases
+ * - [dequeue] and [uncons] are aliases
+ */
 @Serializable(with = BankersQueue.TypeSerializer::class)
 class BankersQueue<out A> private constructor(
     val ls: Int,

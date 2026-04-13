@@ -31,12 +31,27 @@ class ChainSpec {
     @Test
     fun `chain string equality and hash code are value based`() {
         val left = Chain.of(1).append(Chain.of(2)).append(Chain.of(3))
-        val right = Chain.fromList(listOf(1, 2, 3))
-        val different = Chain.fromList(listOf(1, 2, 4))
+        val right = Chain.wrapList(listOf(1, 2, 3))
+        val different = Chain.wrapList(listOf(1, 2, 4))
 
         assertEquals("Chain(1, 2, 3)", left.toString())
         assertEquals(left, right)
         assertEquals(left.hashCode(), right.hashCode())
         assertFalse(left == different)
+    }
+
+    @Test
+    fun `wrapList and wrapArray document aliasing by reflecting caller mutations`() {
+        val list = mutableListOf(1, 2, 3)
+        val array = arrayOf(1, 2, 3)
+
+        val wrappedList = Chain.wrapList(list)
+        val wrappedArray = Chain.wrapArray(array)
+
+        list[1] = 20
+        array[2] = 30
+
+        assertEquals(listOf(1, 20, 3), wrappedList.toList())
+        assertEquals(listOf(1, 2, 30), wrappedArray.toList())
     }
 }

@@ -12,10 +12,9 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
 ) {
     actual constructor(initialCapacity: Int) : this(initialCapacity, ConcurrentHashMapNativeHooks())
 
-    private val bucketMask: Int
-    private val buckets: Array<AtomicReference<Entry<K, V>?>>
+    private val tableRef: AtomicReference<Table<K, V>>
     private val activeMutations = AtomicInt(0)
-    private val clearInProgress = AtomicInt(0)
+    private val exclusiveMutationInProgress = AtomicInt(0)
     private val sizeRef = AtomicInt(0)
 
     actual val size: Int
@@ -23,59 +22,70 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
 
     init {
         val bucketCount = normalizeBucketCount(initialCapacity)
-        bucketMask = bucketCount - 1
-        buckets = Array(bucketCount) { AtomicReference<Entry<K, V>?>(null) }
+        tableRef = AtomicReference(createTable(bucketCount))
     }
 
-    actual operator fun get(key: K): V? = findEntry(key)?.value
+    actual operator fun get(key: K): V? = findEntry(tableRef.load(), key)?.value
 
     actual fun put(key: K, value: V): V? {
-        return withMutationPermit {
-            val bucket = buckets[bucketIndex(key)]
-            while (true) {
-                val snapshot = bucket.load()
-                val existing = findEntry(snapshot, key)
-                val updated = if (existing == null) {
-                    Entry(key, value, snapshot)
-                } else {
-                    replaceEntry(snapshot, key, value)
-                }
-                if (bucket.compareAndSet(snapshot, updated)) {
-                    hooks.afterBucketMutationBeforeSizeChange?.invoke()
-                    if (existing == null) {
-                        sizeRef.adjust(1)
-                        return@withMutationPermit null
+        var insertedSize = -1
+        val previous =
+            withMutationPermit { table ->
+                val bucket = table.buckets[bucketIndex(table, key)]
+                while (true) {
+                    val snapshot = bucket.load()
+                    val existing = findEntry(snapshot, key)
+                    val updated = if (existing == null) {
+                        Entry(key, value, snapshot)
+                    } else {
+                        replaceEntry(snapshot, key, value)
                     }
-                    return@withMutationPermit existing.value
+                    if (bucket.compareAndSet(snapshot, updated)) {
+                        hooks.afterBucketMutationBeforeSizeChange?.invoke()
+                        if (existing == null) {
+                            insertedSize = sizeRef.adjustAndGet(1)
+                            return@withMutationPermit null
+                        }
+                        return@withMutationPermit existing.value
+                    }
                 }
+                error("unreachable")
             }
-            error("unreachable")
+        if (insertedSize >= 0) {
+            resizeIfNeeded(insertedSize)
         }
+        return previous
     }
 
     actual fun putIfAbsent(key: K, value: V): V? {
-        return withMutationPermit {
-            val bucket = buckets[bucketIndex(key)]
-            while (true) {
-                val snapshot = bucket.load()
-                val existing = findEntry(snapshot, key)
-                if (existing != null) {
-                    return@withMutationPermit existing.value
+        var insertedSize = -1
+        val previous =
+            withMutationPermit { table ->
+                val bucket = table.buckets[bucketIndex(table, key)]
+                while (true) {
+                    val snapshot = bucket.load()
+                    val existing = findEntry(snapshot, key)
+                    if (existing != null) {
+                        return@withMutationPermit existing.value
+                    }
+                    val updated = Entry(key, value, snapshot)
+                    if (bucket.compareAndSet(snapshot, updated)) {
+                        hooks.afterBucketMutationBeforeSizeChange?.invoke()
+                        insertedSize = sizeRef.adjustAndGet(1)
+                        return@withMutationPermit null
+                    }
                 }
-                val updated = Entry(key, value, snapshot)
-                if (bucket.compareAndSet(snapshot, updated)) {
-                    hooks.afterBucketMutationBeforeSizeChange?.invoke()
-                    sizeRef.adjust(1)
-                    return@withMutationPermit null
-                }
+                error("unreachable")
             }
-            error("unreachable")
+        if (insertedSize >= 0) {
+            resizeIfNeeded(insertedSize)
         }
+        return previous
     }
 
     actual fun remove(key: K): V? {
-        return withMutationPermit {
-            val bucket = buckets[bucketIndex(key)]
+        return withMutationPermit { table ->
+            val bucket = table.buckets[bucketIndex(table, key)]
             while (true) {
                 val snapshot = bucket.load()
                 val existing = findEntry(snapshot, key) ?: return@withMutationPermit null
@@ -91,8 +101,8 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
     }
 
     actual fun remove(key: K, value: V): Boolean {
-        return withMutationPermit {
-            val bucket = buckets[bucketIndex(key)]
+        return withMutationPermit { table ->
+            val bucket = table.buckets[bucketIndex(table, key)]
             while (true) {
                 val snapshot = bucket.load()
                 val existing = findEntry(snapshot, key) ?: return@withMutationPermit false
@@ -110,26 +120,26 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
         }
     }
 
-    actual fun containsKey(key: K): Boolean = findEntry(key) != null
+    actual fun containsKey(key: K): Boolean = findEntry(tableRef.load(), key) != null
 
     actual fun clear() {
-        beginClear()
+        beginExclusiveMutation()
         try {
-            for (bucket in buckets) {
-                bucket.store(null)
-            }
+            val currentTable = tableRef.load()
+            tableRef.store(createTable(currentTable.bucketCount))
             hooks.beforeClearResetsSize?.invoke()
             sizeRef.store(0)
         } finally {
-            clearInProgress.store(0)
+            exclusiveMutationInProgress.store(0)
         }
     }
 
     actual fun size(): Int = size
 
     actual fun entriesSnapshot(): List<Pair<K, V>> {
+        val table = tableRef.load()
         val result = ArrayList<Pair<K, V>>(sizeRef.load())
-        for (bucket in buckets) {
+        for (bucket in table.buckets) {
             var entry = bucket.load()
             while (entry != null) {
                 result += entry.key to entry.value
@@ -139,14 +149,15 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
         return result
     }
 
-    private fun findEntry(key: K): Entry<K, V>? = findEntry(buckets[bucketIndex(key)].load(), key)
+    private fun findEntry(table: Table<K, V>, key: K): Entry<K, V>? =
+        findEntry(table.buckets[bucketIndex(table, key)].load(), key)
 
-    private fun bucketIndex(key: K): Int = spreadHash(key.hashCode()) and bucketMask
+    private fun bucketIndex(table: Table<K, V>, key: K): Int = spreadHash(key.hashCode()) and table.bucketMask
 
-    private inline fun <T> withMutationPermit(block: () -> T): T {
+    private inline fun <T> withMutationPermit(block: (Table<K, V>) -> T): T {
         enterMutation()
         try {
-            return block()
+            return block(tableRef.load())
         } finally {
             activeMutations.adjust(-1)
         }
@@ -154,11 +165,11 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
 
     private fun enterMutation() {
         while (true) {
-            while (clearInProgress.load() != 0) {
+            while (exclusiveMutationInProgress.load() != 0) {
                 sched_yield()
             }
             activeMutations.adjust(1)
-            if (clearInProgress.load() == 0) {
+            if (exclusiveMutationInProgress.load() == 0) {
                 return
             }
             activeMutations.adjust(-1)
@@ -166,8 +177,8 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
         }
     }
 
-    private fun beginClear() {
-        while (!clearInProgress.compareAndSet(0, 1)) {
+    private fun beginExclusiveMutation() {
+        while (!exclusiveMutationInProgress.compareAndSet(0, 1)) {
             sched_yield()
         }
         while (activeMutations.load() != 0) {
@@ -175,10 +186,59 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
         }
     }
 
+    private fun resizeIfNeeded(requiredSize: Int) {
+        val currentTable = tableRef.load()
+        if (requiredSize <= currentTable.resizeThreshold) {
+            return
+        }
+
+        beginExclusiveMutation()
+        try {
+            val table = tableRef.load()
+            val currentSize = sizeRef.load()
+            if (currentSize <= table.resizeThreshold) {
+                return
+            }
+            val newBucketCount = expandedBucketCount(table.bucketCount, currentSize)
+            if (newBucketCount == table.bucketCount) {
+                return
+            }
+            val resizedTable = createTable(newBucketCount)
+            for (bucket in table.buckets) {
+                var entry = bucket.load()
+                while (entry != null) {
+                    val bucketIndex = bucketIndex(resizedTable, entry.key)
+                    val resizedBucket = resizedTable.buckets[bucketIndex]
+                    resizedBucket.store(Entry(entry.key, entry.value, resizedBucket.load()))
+                    entry = entry.next
+                }
+            }
+            tableRef.store(resizedTable)
+            hooks.afterResizePublishesTable?.invoke(table.bucketCount, resizedTable.bucketCount)
+        } finally {
+            exclusiveMutationInProgress.store(0)
+        }
+    }
+
+    private fun createTable(bucketCount: Int): Table<K, V> =
+        Table(
+            bucketCount = bucketCount,
+            bucketMask = bucketCount - 1,
+            resizeThreshold = resizeThreshold(bucketCount),
+            buckets = Array(bucketCount) { AtomicReference<Entry<K, V>?>(null) },
+        )
+
     private data class Entry<K : Any, V : Any>(
         val key: K,
         val value: V,
         val next: Entry<K, V>?,
+    )
+
+    private data class Table<K : Any, V : Any>(
+        val bucketCount: Int,
+        val bucketMask: Int,
+        val resizeThreshold: Int,
+        val buckets: Array<AtomicReference<Entry<K, V>?>>,
     )
 
     private fun findEntry(head: Entry<K, V>?, key: K): Entry<K, V>? {
@@ -238,15 +298,36 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
             }
         }
     }
+
+    private fun AtomicInt.adjustAndGet(delta: Int): Int {
+        while (true) {
+            val current = load()
+            val updated = current + delta
+            if (compareAndSet(current, updated)) {
+                return updated
+            }
+        }
+    }
 }
 
 private fun normalizeBucketCount(initialCapacity: Int): Int {
+    require(initialCapacity >= 0) { "Initial capacity must be non-negative: $initialCapacity" }
     var count = 1
-    val target = if (initialCapacity <= 0) 16 else initialCapacity
+    val target = if (initialCapacity == 0) 16 else initialCapacity
     while (count < target) {
         count = count shl 1
     }
     return maxOf(count, 16)
+}
+
+private fun resizeThreshold(bucketCount: Int): Int = maxOf(1, bucketCount - (bucketCount ushr 2))
+
+private fun expandedBucketCount(currentBucketCount: Int, size: Int): Int {
+    var nextBucketCount = currentBucketCount
+    while (size > resizeThreshold(nextBucketCount)) {
+        nextBucketCount = nextBucketCount shl 1
+    }
+    return nextBucketCount
 }
 
 private fun spreadHash(hash: Int): Int {
@@ -257,4 +338,5 @@ private fun spreadHash(hash: Int): Int {
 internal class ConcurrentHashMapNativeHooks(
     val beforeClearResetsSize: (() -> Unit)? = null,
     val afterBucketMutationBeforeSizeChange: (() -> Unit)? = null,
+    val afterResizePublishesTable: ((oldBucketCount: Int, newBucketCount: Int) -> Unit)? = null,
 )

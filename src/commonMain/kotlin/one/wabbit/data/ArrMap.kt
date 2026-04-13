@@ -1,3 +1,5 @@
+@file:OptIn(InternalDataApi::class)
+
 package one.wabbit.data
 
 import kotlinx.serialization.KSerializer
@@ -13,9 +15,16 @@ import kotlinx.serialization.encoding.Encoder
  *
  * Implementation notes:
  * - iteration order is insertion order
+ * - caller-owned input is copied on construction, so instances never alias external mutable arrays
  * - `get`, `contains`, and key replacement use linear scans over the flat arrays
  * - `put` copies the backing arrays and is therefore O(n)
+ * - `remove`, `keys`, and `values` also copy and are therefore O(n)
  * - `equals` is order-independent map equality and therefore O(n^2) in the worst case
+ *
+ * Exception contracts:
+ * - [first] and [last] throw [NoSuchElementException] on an empty map
+ * - key lookup methods never throw for missing keys; [get] returns `null` and [contains] returns
+ *   `false`
  *
  * That tradeoff is intentional: for very small maps the flat representation is compact and
  * cache-friendly, and it avoids the object overhead of a general-purpose hash map.
@@ -24,9 +33,13 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = ArrMap.TypeSerializer::class)
-class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArray) {
-    private val unsafe: Array<Any?> = unsafe.copyOf()
-    private val hashes: IntArray = hashes.copyOf()
+class ArrMap<K : Any, V> private constructor(
+    unsafe: Array<Any?>,
+    hashes: IntArray,
+    @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership,
+) {
+    private val unsafe: Array<Any?> = unsafe
+    private val hashes: IntArray = hashes
 
     init {
         require(unsafe.size % 2 == 0) { "Expected even number of elements, got ${unsafe.size}" }
@@ -101,7 +114,7 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
         val size = hashes.size
         val keyHash = key.hashCode()
         if (size == 0) {
-            return ArrMap(arrayOf(key, value), intArrayOf(keyHash))
+            return unsafeWrapOwned(arrayOf(key, value), intArrayOf(keyHash))
         }
 
         var i = 0
@@ -110,7 +123,7 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
             if (hashes[i] == keyHash && itemKey == key) {
                 val newArr = unsafe.copyOf()
                 newArr[2 * i + 1] = value
-                return ArrMap(newArr, hashes.copyOf())
+                return unsafeWrapOwned(newArr, hashes.copyOf())
             }
             i += 1
         }
@@ -122,7 +135,7 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
         val newHashes = IntArray(size + 1)
         hashes.copyInto(newHashes, endIndex = size)
         newHashes[size] = keyHash
-        return ArrMap(newArr, newHashes)
+        return unsafeWrapOwned(newArr, newHashes)
     }
 
     fun toMutableMap(): MutableMap<K, V> {
@@ -139,54 +152,51 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
 
     fun toMap(): Map<K, V> = toMutableMap()
 
-    //    fun remove(key: K): ArrMap<K, V> {
-    //        val unsafe = unsafe
-    //        val size = unsafe.size
-    //        if (size == 0) {
-    //            return this
-    //        }
-    //        var i = 0
-    //        while (i < size) {
-    //            if (unsafe[i] == key) {
-    //                val newArr = arrayOfNulls<Any?>(size - 2)
-    //                System.arraycopy(unsafe, 0, newArr, 0, i)
-    //                System.arraycopy(unsafe, i + 2, newArr, i, size - i - 2)
-    //                return ArrMap(newArr)
-    //            }
-    //            i += 2
-    //        }
-    //        return this
-    //    }
-    //
-    //    fun clear(): ArrMap<K, V> = ArrMap(emptyArray())
-    //
-    //    fun keys(): Arr<K> {
-    //        val unsafe = unsafe
-    //        val size = unsafe.size
-    //        val result = arrayOfNulls<Any?>(size / 2)
-    //        var i = 0
-    //        var j = 0
-    //        while (i < size) {
-    //            result[j] = unsafe[i]
-    //            i += 2
-    //            j += 1
-    //        }
-    //        return Arr(result)
-    //    }
-    //
-    //    fun values(): Arr<V> {
-    //        val unsafe = unsafe
-    //        val size = unsafe.size
-    //        val result = arrayOfNulls<Any?>(size / 2)
-    //        var i = 1
-    //        var j = 0
-    //        while (i < size) {
-    //            result[j] = unsafe[i]
-    //            i += 2
-    //            j += 1
-    //        }
-    //        return Arr(result)
-    //    }
+    fun remove(key: K): ArrMap<K, V> {
+        val unsafe = unsafe
+        val hashes = hashes
+        val size = hashes.size
+        if (size == 0) {
+            return this
+        }
+
+        val keyHash = key.hashCode()
+        var i = 0
+        while (i < size) {
+            if (hashes[i] == keyHash && unsafe[2 * i] == key) {
+                if (size == 1) {
+                    return empty()
+                }
+                val newUnsafe = arrayOfNulls<Any?>(unsafe.size - 2)
+                unsafe.copyInto(newUnsafe, endIndex = 2 * i)
+                unsafe.copyInto(newUnsafe, destinationOffset = 2 * i, startIndex = 2 * i + 2)
+                val newHashes = IntArray(size - 1)
+                hashes.copyInto(newHashes, endIndex = i)
+                hashes.copyInto(newHashes, destinationOffset = i, startIndex = i + 1)
+                return unsafeWrapOwned(newUnsafe, newHashes)
+            }
+            i += 1
+        }
+        return this
+    }
+
+    fun clear(): ArrMap<K, V> = empty()
+
+    fun keys(): Arr<K> {
+        val result = arrayOfNulls<Any?>(size)
+        for (index in hashes.indices) {
+            result[index] = unsafe[2 * index]
+        }
+        return Arr.unsafeWrapOwned(result)
+    }
+
+    fun values(): Arr<V> {
+        val result = arrayOfNulls<Any?>(size)
+        for (index in hashes.indices) {
+            result[index] = unsafe[2 * index + 1]
+        }
+        return Arr.unsafeWrapOwned(result)
+    }
 
     override fun toString(): String {
         val sb = StringBuilder()
@@ -286,9 +296,15 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
     }
 
     companion object {
+        private object UnsafeOwnership
+
         const val RECOMMENDED_MAX_SIZE: Int = 16
 
-        private val EMPTY = ArrMap<Nothing, Nothing>(emptyArray(), intArrayOf())
+        @InternalDataApi
+        internal fun <K : Any, V> unsafeWrapOwned(unsafe: Array<Any?>, hashes: IntArray): ArrMap<K, V> =
+            ArrMap(unsafe, hashes, UnsafeOwnership)
+
+        private val EMPTY = unsafeWrapOwned<Nothing, Nothing>(emptyArray(), intArrayOf())
 
         fun <K : Any, V> empty(): ArrMap<K, V> = EMPTY as ArrMap<K, V>
 
@@ -306,7 +322,7 @@ class ArrMap<K : Any, V> private constructor(unsafe: Array<Any?>, hashes: IntArr
                 hashes[i] = key.hashCode()
                 i += 1
             }
-            return ArrMap(unsafe, hashes)
+            return unsafeWrapOwned(unsafe, hashes)
         }
     }
 }

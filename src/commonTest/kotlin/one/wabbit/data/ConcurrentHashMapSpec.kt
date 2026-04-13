@@ -3,6 +3,7 @@ package one.wabbit.data
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -68,5 +69,12 @@ class ConcurrentHashMapSpec {
         assertEquals(0, map.size())
         assertFalse(map.containsKey("a"))
         assertTrue(map.entriesSnapshot().isEmpty())
+    }
+
+    @Test
+    fun `negative initial capacity matches jvm contract`() {
+        assertFailsWith<IllegalArgumentException> {
+            ConcurrentHashMap<String, Int>(-1)
+        }
     }
 }

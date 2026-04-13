@@ -68,6 +68,31 @@ private fun waitUntil(timeout: Duration, condition: () -> Boolean): Boolean {
 
 class ConcurrentHashMapNativeSpec {
     @Test
+    fun `map resizes under sustained growth`() {
+        val resizeEvents = mutableListOf<Pair<Int, Int>>()
+        val map =
+            ConcurrentHashMap<String, Int>(
+                1,
+                ConcurrentHashMapNativeHooks(
+                    afterResizePublishesTable = { oldBucketCount, newBucketCount ->
+                        resizeEvents += oldBucketCount to newBucketCount
+                    },
+                ),
+            )
+
+        for (index in 0 until 40) {
+            assertEquals(null, map.put("key-$index", index))
+        }
+
+        assertTrue(resizeEvents.isNotEmpty(), "expected native map growth to trigger at least one resize")
+        assertEquals(40, map.size)
+        for (index in 0 until 40) {
+            assertEquals(index, map["key-$index"])
+        }
+        assertEquals((0 until 40).map { "key-$it" to it }.toSet(), map.entriesSnapshot().toSet())
+    }
+
+    @Test
     fun `clear blocks puts until size reset is published`() {
         val clearPaused = AtomicInt(0)
         val allowClearToFinish = AtomicInt(0)
