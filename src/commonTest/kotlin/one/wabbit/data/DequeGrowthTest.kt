@@ -138,4 +138,54 @@ class DequeGrowthTest {
         assertEquals(doubleNan1, doubleNan2)
         assertEquals(doubleNan1.hashCode(), doubleNan2.hashCode())
     }
+
+    @Test
+    fun `bulk array operations preserve order across wrapped storage`() {
+        val deque = IntDeque(8)
+
+        deque.pushLast(intArrayOf(4, 5, 6, 7))
+        assertContentEquals(intArrayOf(6, 7), deque.popLast(2))
+
+        deque.pushFirst(intArrayOf(2, 3))
+        deque.pushFirst(intArrayOf(0, 1))
+        deque.pushLast(intArrayOf(6, 7))
+
+        assertContentEquals(intArrayOf(0, 1, 2, 3, 4, 5, 6, 7), deque.toIntArray())
+        assertContentEquals(intArrayOf(0, 1, 2, 3, 4), deque.popFirst(5))
+        assertContentEquals(intArrayOf(5, 6, 7), deque.toIntArray())
+    }
+
+    @Test
+    fun `bulk deque operations preserve order across wrapped source and destination`() {
+        val target = IntDeque(12)
+        target.pushLast(intArrayOf(4, 5))
+        target.pushFirst(intArrayOf(2, 3))
+        target.pushFirst(intArrayOf(0, 1))
+
+        val suffix = IntDeque(6)
+        suffix.pushLast(intArrayOf(8, 9))
+        suffix.pushFirst(intArrayOf(6, 7))
+        target.pushLast(suffix)
+
+        val prefix = IntDeque(4)
+        prefix.pushLast(-1)
+        prefix.pushFirst(-2)
+        target.pushFirst(prefix)
+
+        assertContentEquals(intArrayOf(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9), target.toIntArray())
+    }
+
+    @Test
+    fun `zero length bulk operations are safe on empty deque`() {
+        val deque = IntDeque.empty()
+
+        deque.pushFirst(intArrayOf())
+        deque.pushLast(intArrayOf())
+        deque.pushFirst(IntDeque.empty())
+        deque.pushLast(IntDeque.empty())
+
+        assertContentEquals(intArrayOf(), deque.popFirst(0))
+        assertContentEquals(intArrayOf(), deque.popLast(0))
+        assertEquals(0, deque.size)
+    }
 }

@@ -4,6 +4,7 @@ package one.wabbit.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -97,6 +98,15 @@ class ChunkSpec {
         val updated = updateBase.update(3, 40)
         assertEquals(listOf(1, 20, 3, 4), updateBase.toList())
         assertEquals(listOf(1, 20, 3, 40), updated.toList())
+    }
+
+    @Test
+    fun `prepend chunk rejects negative indices instead of reading from buffer slots`() {
+        val prepended = chunkOf<String?>("tail").prepend(null).prepend("head")
+
+        assertFailsWith<IndexOutOfBoundsException> {
+            prepended[-1]
+        }
     }
 
     @Test

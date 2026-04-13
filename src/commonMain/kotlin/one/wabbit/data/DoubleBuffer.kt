@@ -9,6 +9,26 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Mutable contiguous buffer for primitive doubles.
+ *
+ * The buffer owns its internal array. Constructors copy caller-provided arrays, and mutating
+ * operations update the receiver in place.
+ *
+ * Complexity notes:
+ * - [size], [isEmpty], [isNotEmpty], [first], [last], [firstOrNull], [lastOrNull], [get], and
+ *   [set] are O(1)
+ * - appends are amortized O(1)
+ * - indexed insertions, removals, copies, sorting, and searches are O(n)
+ *
+ * Exception contracts:
+ * - [first], [last], [removeFirst], and [removeLast] throw [NoSuchElementException] on an empty
+ *   buffer
+ * - indexed access and update operations throw [IndexOutOfBoundsException] for invalid indices
+ *
+ * Negative indexing is supported for element access and updates where documented. Methods named
+ * [binarySearch] require sorted contents; they do not sort implicitly.
+ */
 @Serializable(with = DoubleBuffer.TypeSerializer::class)
 class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     // /////////////////////////////////////////////////////////////////////////
@@ -367,6 +387,12 @@ class DoubleBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Searches for [value] using binary search.
+     *
+     * Requires the current contents to already be sorted in ascending order according to compareTo.
+     * If the buffer is not sorted, the result is undefined.
+     */
     fun binarySearch(value: Double): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
     fun sorted(): DoubleBuffer {

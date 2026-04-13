@@ -2,6 +2,11 @@
 
 package one.wabbit.data
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlin.math.abs
 
 /**
@@ -28,6 +33,7 @@ import kotlin.math.abs
  * - [head] throws on empty chunks
  * - [get] and [update] throw [IndexOutOfBoundsException] for invalid indices
  */
+@Serializable(with = Chunk.TypeSerializer::class)
 sealed class Chunk<out A> : Iterable<A> {
     abstract val size: Int
     internal abstract val depth: Int
@@ -646,10 +652,12 @@ sealed class Chunk<out A> : Iterable<A> {
             get() = end.size + used
 
         override fun get(index: Int): A {
+            if (index !in 0 until size) {
+                throw IndexOutOfBoundsException("PrependN index=$index size=${end.size + used}")
+            }
             return when {
                 index < used -> buffer[buffer.size - used + index] as A
-                index < end.size + used -> end[index - used]
-                else -> throw IndexOutOfBoundsException("PrependN index=$index size=${end.size + used}")
+                else -> end[index - used]
             }
         }
 
@@ -783,6 +791,13 @@ sealed class Chunk<out A> : Iterable<A> {
         fun fromString(string: String): Chunk<Char> =
             if (string.isEmpty()) empty() else StringChunk(string)
 
+        fun <A> fromList(list: List<A>): Chunk<A> =
+            when (list.size) {
+                0 -> empty()
+                1 -> Single(list[0])
+                else -> ArrayChunk(list.toChunkArray())
+            }
+
         fun <A> single(value: A): Chunk<A> = Single(value)
 
         fun <S, A> unfold(seed: S, generate: (S) -> Pair<A, S>?): Chunk<A> {
@@ -795,6 +810,19 @@ sealed class Chunk<out A> : Iterable<A> {
             }
             return builder.result()
         }
+    }
+
+    class TypeSerializer<A>(private val elementSerializer: KSerializer<A>) : KSerializer<Chunk<A>> {
+        private val listSerializer = ListSerializer(elementSerializer)
+
+        override val descriptor = listSerializer.descriptor
+
+        override fun serialize(encoder: Encoder, value: Chunk<A>) {
+            encoder.encodeSerializableValue(listSerializer, value.toList())
+        }
+
+        override fun deserialize(decoder: Decoder): Chunk<A> =
+            fromList(decoder.decodeSerializableValue(listSerializer))
     }
 }
 

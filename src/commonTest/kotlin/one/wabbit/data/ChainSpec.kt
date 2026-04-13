@@ -54,4 +54,13 @@ class ChainSpec {
         assertEquals(listOf(1, 20, 3), wrappedList.toList())
         assertEquals(listOf(1, 2, 30), wrappedArray.toList())
     }
+
+    @Test
+    fun `chain preserves nullable elements during traversal and materialization`() {
+        val chain = Chain.of<String?>(null).append(Chain.of("x"))
+
+        assertEquals(2, chain.length)
+        assertEquals(listOf<String?>(null, "x"), chain.toList())
+        assertEquals(listOf<String?>(null, "x"), chain.toArray().toList())
+    }
 }

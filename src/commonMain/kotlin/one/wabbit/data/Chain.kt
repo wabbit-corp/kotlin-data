@@ -29,6 +29,7 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable(with = Chain.TypeSerializer::class)
 class Chain<out A> private constructor(private val value: Any?, val length: Int, private val depth: Int) {
     private object Empty
+    private object Finished
 
     private class Concat(val left: Any?, val right: Any?)
 
@@ -121,13 +122,13 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
             var stackPtr = 0
             var outputPtr = 0
 
-            while (current != null) {
+            while (current !== Finished) {
                 if (current === Empty) {
                     if (stackPtr > 0) {
                         stackPtr -= 1
                         current = rights[stackPtr]
                     } else {
-                        current = null
+                        current = Finished
                     }
                 } else if (current is WrapList<*>) {
                     val s = current as WrapList<Any>
@@ -139,7 +140,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
                         stackPtr -= 1
                         current = rights[stackPtr]
                     } else {
-                        current = null
+                        current = Finished
                     }
                 } else if (current is WrapArray<*>) {
                     val s = current as WrapArray<Any>
@@ -151,7 +152,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
                         stackPtr -= 1
                         current = rights[stackPtr]
                     } else {
-                        current = null
+                        current = Finished
                     }
                 } else if (current is Concat) {
                     val c = current as Concat
@@ -165,7 +166,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
                         stackPtr -= 1
                         current = rights[stackPtr]
                     } else {
-                        current = null
+                        current = Finished
                     }
                 }
             }

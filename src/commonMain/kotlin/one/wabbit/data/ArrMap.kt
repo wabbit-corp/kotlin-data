@@ -123,7 +123,7 @@ class ArrMap<K : Any, V> private constructor(
             if (hashes[i] == keyHash && itemKey == key) {
                 val newArr = unsafe.copyOf()
                 newArr[2 * i + 1] = value
-                return unsafeWrapOwned(newArr, hashes.copyOf())
+                return unsafeWrapOwned(newArr, hashes)
             }
             i += 1
         }
@@ -246,11 +246,11 @@ class ArrMap<K : Any, V> private constructor(
         return sb.toString()
     }
 
-    private var _hashCode: Long = 0x100000000L
+    private var _hashCode: Long = UNCACHED_HASH
 
     override fun hashCode(): Int {
         val h = _hashCode
-        if (h != 0x100000000L) {
+        if (h != UNCACHED_HASH) {
             return h.toInt()
         }
         val result = hashCodeImpl()
@@ -277,7 +277,9 @@ class ArrMap<K : Any, V> private constructor(
             val thisSize = hashes.size
             val thatSize = other.hashes.size
             if (thisSize != thatSize) return false
-            if (hashCode() != other.hashCode()) return false
+            val thisHash = _hashCode
+            val otherHash = other._hashCode
+            if (thisHash != UNCACHED_HASH && otherHash != UNCACHED_HASH && thisHash != otherHash) return false
             // Intentionally scan: ArrMap is a tiny-map structure optimized for very small sizes.
             val thisUnsafe = unsafe
             val thatUnsafe = other.unsafe
@@ -326,6 +328,7 @@ class ArrMap<K : Any, V> private constructor(
 
     companion object {
         private object UnsafeOwnership
+        private const val UNCACHED_HASH: Long = 0x100000000L
 
         const val RECOMMENDED_MAX_SIZE: Int = 16
 

@@ -9,6 +9,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ArrSpec {
+    private class HashCodeBomb(private val value: String) {
+        override fun equals(other: Any?): Boolean = other is HashCodeBomb && value == other.value
+
+        override fun hashCode(): Int = error("hashCode should not be called on the cold equals path")
+    }
+
     @Test
     fun `arr constructor does not alias caller array and cached hash stays coherent`() {
         val backing = arrayOf<Any?>(1, 2, null)
@@ -76,6 +82,14 @@ class ArrSpec {
     }
 
     @Test
+    fun `arr equals does not compute hash codes on the cold mismatch path`() {
+        val left = Arr<HashCodeBomb>(arrayOf(HashCodeBomb("left"), HashCodeBomb("shared")))
+        val right = Arr<HashCodeBomb>(arrayOf(HashCodeBomb("right"), HashCodeBomb("shared")))
+
+        assertFalse(left == right)
+    }
+
+    @Test
     fun `arr exposes list style search and slicing helpers`() {
         val arr = arrOf(1, 2, 3, 2)
 
@@ -123,6 +137,14 @@ class ArrSpec {
 
         assertEquals(left, right)
         assertEquals(left.hashCode(), right.hashCode())
+    }
+
+    @Test
+    fun `arrMap equals does not compute hash codes on the cold mismatch path`() {
+        val left = ArrMap.from(mapOf("a" to HashCodeBomb("left"), "b" to HashCodeBomb("shared")))
+        val right = ArrMap.from(mapOf("a" to HashCodeBomb("right"), "b" to HashCodeBomb("shared")))
+
+        assertFalse(left == right)
     }
 
     @Test

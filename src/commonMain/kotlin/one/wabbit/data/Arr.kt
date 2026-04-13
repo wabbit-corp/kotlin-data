@@ -17,8 +17,8 @@ import kotlinx.serialization.encoding.Encoder
  * return new [Arr] values and leave earlier instances unchanged.
  *
  * Complexity notes:
- * - indexed reads are O(1)
- * - [first], [last], [firstOrNull], [lastOrNull], [contains], [indexOf], and [lastIndexOf] are O(n)
+ * - indexed reads, [first], [last], [firstOrNull], and [lastOrNull] are O(1)
+ * - [contains], [indexOf], and [lastIndexOf] are O(n)
  * - [map], [update], [plus], and [subList] allocate and copy, so they are O(n)
  *
  * Exception contracts:
@@ -231,11 +231,11 @@ class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARA
         return unsafeWrapOwned(newArr)
     }
 
-    private var _hashCode: Long = 0x100000000L
+    private var _hashCode: Long = UNCACHED_HASH
 
     override fun hashCode(): Int {
         val h = _hashCode
-        if (h != 0x100000000L) {
+        if (h != UNCACHED_HASH) {
             return h.toInt()
         }
         val result = hashCodeImpl()
@@ -259,7 +259,9 @@ class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARA
         if (other is Arr<*>) {
             val otherUnsafe = other.unsafe
             if (size != otherUnsafe.size) return false
-            if (hashCode() != other.hashCode()) return false
+            val thisHash = _hashCode
+            val otherHash = other._hashCode
+            if (thisHash != UNCACHED_HASH && otherHash != UNCACHED_HASH && thisHash != otherHash) return false
             for (i in 0..size - 1) {
                 if (unsafe[i] === otherUnsafe[i]) continue
                 if (unsafe[i] != otherUnsafe[i]) return false
@@ -285,6 +287,7 @@ class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARA
 
     companion object {
         private object UnsafeOwnership
+        private const val UNCACHED_HASH: Long = 0x100000000L
 
         @InternalDataApi
         internal fun <T> unsafeWrapOwned(unsafe: Array<Any?>): Arr<T> = Arr(unsafe, UnsafeOwnership)

@@ -52,6 +52,65 @@ class IntDeque(initialCapacity: Int = 16) {
         }
     }
 
+    private fun advance(index: Int, amount: Int): Int {
+        if (capacity == 0 || amount == 0) return index
+        return (index + (amount % capacity)) % capacity
+    }
+
+    private fun retreat(index: Int, amount: Int): Int {
+        if (capacity == 0 || amount == 0) return index
+        return (index - (amount % capacity) + capacity) % capacity
+    }
+
+    private fun copyLinearIntoRing(
+        source: IntArray,
+        sourceStart: Int,
+        count: Int,
+        destinationIndex: Int,
+    ) {
+        if (count == 0) return
+        val start = if (destinationIndex >= capacity) destinationIndex % capacity else destinationIndex
+        val firstPart = minOf(count, capacity - start)
+        source.copyInto(buffer, start, sourceStart, sourceStart + firstPart)
+        val remaining = count - firstPart
+        if (remaining > 0) {
+            source.copyInto(buffer, 0, sourceStart + firstPart, sourceStart + count)
+        }
+    }
+
+    private fun copyRingIntoLinear(
+        source: IntArray,
+        sourceCapacity: Int,
+        sourceIndex: Int,
+        count: Int,
+        destination: IntArray,
+        destinationOffset: Int = 0,
+    ) {
+        if (count == 0) return
+        val firstPart = minOf(count, sourceCapacity - sourceIndex)
+        source.copyInto(destination, destinationOffset, sourceIndex, sourceIndex + firstPart)
+        val remaining = count - firstPart
+        if (remaining > 0) {
+            source.copyInto(destination, destinationOffset + firstPart, 0, remaining)
+        }
+    }
+
+    private fun copyRingIntoRing(
+        source: IntArray,
+        sourceCapacity: Int,
+        sourceIndex: Int,
+        count: Int,
+        destinationIndex: Int,
+    ) {
+        if (count == 0) return
+        val firstPart = minOf(count, sourceCapacity - sourceIndex)
+        copyLinearIntoRing(source, sourceIndex, firstPart, destinationIndex)
+        val remaining = count - firstPart
+        if (remaining > 0) {
+            copyLinearIntoRing(source, 0, remaining, destinationIndex + firstPart)
+        }
+    }
+
     constructor(values: IntArray) : this(values.size) {
         pushLast(values)
     }
@@ -65,10 +124,7 @@ class IntDeque(initialCapacity: Int = 16) {
         val newCapacity = maxOf(capacity * 3 / 2, needed)
 
         val newBuffer = IntArray(newCapacity)
-        // copy old elements into new buffer starting at index 0
-        for (i in 0 until usedSize) {
-            newBuffer[i] = buffer[(head + i) % capacity]
-        }
+        copyRingIntoLinear(buffer, capacity, head, usedSize, newBuffer)
         buffer = newBuffer
         capacity = newCapacity
         head = 0
@@ -122,21 +178,18 @@ class IntDeque(initialCapacity: Int = 16) {
     /** Push an array of elements to the 'end' (tail). */
     fun pushLast(values: IntArray) {
         ensureCapacity(usedSize + values.size)
-        for (v in values) {
-            buffer[tail] = v
-            tail = (tail + 1) % capacity
-        }
+        copyLinearIntoRing(values, 0, values.size, tail)
+        tail = advance(tail, values.size)
         usedSize += values.size
     }
 
     /** Push all elements of another Deque to the 'end' (tail). */
     fun pushLast(values: IntDeque) {
         ensureCapacity(usedSize + values.size)
-        for (i in 0 until values.size) {
-            buffer[tail] = values.buffer[(values.head + i) % values.capacity]
-            tail = (tail + 1) % capacity
-        }
-        usedSize += values.size
+        val sourceSize = values.usedSize
+        copyRingIntoRing(values.buffer, values.capacity, values.head, sourceSize, tail)
+        tail = advance(tail, sourceSize)
+        usedSize += sourceSize
     }
 
     /** Push single element to the 'front' (head). */
@@ -153,24 +206,18 @@ class IntDeque(initialCapacity: Int = 16) {
      */
     fun pushFirst(values: IntArray) {
         ensureCapacity(usedSize + values.size)
-        // Push in reverse order so that the final array
-        // has the same element ordering as [values].
-        for (i in values.lastIndex downTo 0) {
-            head = (head - 1 + capacity) % capacity
-            buffer[head] = values[i]
-        }
+        head = retreat(head, values.size)
+        copyLinearIntoRing(values, 0, values.size, head)
         usedSize += values.size
     }
 
     /** Push all elements of another Deque to the 'front' (head), preserving order. */
     fun pushFirst(values: IntDeque) {
         ensureCapacity(usedSize + values.size)
-        // Similarly, we traverse from the last element to the first in 'values'
-        for (i in values.size - 1 downTo 0) {
-            head = (head - 1 + capacity) % capacity
-            buffer[head] = values.buffer[(values.head + i) % values.capacity]
-        }
-        usedSize += values.size
+        val sourceSize = values.usedSize
+        head = retreat(head, sourceSize)
+        copyRingIntoRing(values.buffer, values.capacity, values.head, sourceSize, head)
+        usedSize += sourceSize
     }
 
     /** Pop one element from the 'end' (tail). */
@@ -186,10 +233,9 @@ class IntDeque(initialCapacity: Int = 16) {
     fun popLast(count: Int): IntArray {
         requirePopCount(count)
         val result = IntArray(count)
-        for (i in 0 until count) {
-            tail = (tail - 1 + capacity) % capacity
-            result[count - 1 - i] = buffer[tail]
-        }
+        val newTail = retreat(tail, count)
+        copyRingIntoLinear(buffer, capacity, newTail, count, result)
+        tail = newTail
         usedSize -= count
         return result
     }
@@ -207,10 +253,8 @@ class IntDeque(initialCapacity: Int = 16) {
     fun popFirst(count: Int): IntArray {
         requirePopCount(count)
         val result = IntArray(count)
-        for (i in 0 until count) {
-            result[i] = buffer[(head + i) % capacity]
-        }
-        head = (head + count) % capacity
+        copyRingIntoLinear(buffer, capacity, head, count, result)
+        head = advance(head, count)
         usedSize -= count
         return result
     }

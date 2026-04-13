@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = Cord.TypeSerializer::class)
-class Cord private constructor(private val value: Any, val length: Int, private val depth: Int) {
+class Cord private constructor(private val value: Any, override val length: Int, private val depth: Int) : CharSequence {
     private class Concat(val left: Any, val right: Any)
 
     // Cord = (String | Concat, Int)
@@ -29,6 +29,23 @@ class Cord private constructor(private val value: Any, val length: Int, private 
 
     fun append(s: String): Cord =
         Cord(Concat(this.value, s), this.length + s.length, this.depth + 1)
+
+    override fun get(index: Int): Char {
+        if (index !in 0 until length) {
+            throw IndexOutOfBoundsException("index: $index, length: $length")
+        }
+        return toString()[index]
+    }
+
+    override fun subSequence(startIndex: Int, endIndex: Int): CharSequence {
+        if (startIndex < 0 || endIndex < startIndex || endIndex > length) {
+            throw IndexOutOfBoundsException("startIndex: $startIndex, endIndex: $endIndex, length: $length")
+        }
+        if (startIndex == endIndex) {
+            return empty
+        }
+        return of(toString().substring(startIndex, endIndex))
+    }
 
     override fun equals(other: Any?): Boolean = other is Cord && toString() == other.toString()
 

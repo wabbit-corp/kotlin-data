@@ -45,6 +45,19 @@ class SerializationSpec {
     }
 
     @Test
+    fun `chunk serialization is based on logical contents`() {
+        val left = chunkOf(1, 2).append(3).update(1, 20)
+        val right = Chunk.fromIntArray(intArrayOf(1, 20, 3))
+
+        val leftJson = json.encodeToString<Chunk<Int>>(left)
+        val rightJson = json.encodeToString<Chunk<Int>>(right)
+
+        assertEquals("[1,20,3]", leftJson)
+        assertEquals(leftJson, rightJson)
+        assertEquals(left, json.decodeFromString<Chunk<Int>>(leftJson))
+    }
+
+    @Test
     fun `primitive buffers and deques use primitive array serializers`() {
         assertUsesPrimitiveArraySerializer(BooleanArraySerializer().descriptor, BooleanBuffer.TypeSerializer().descriptor)
         assertUsesPrimitiveArraySerializer(ByteArraySerializer().descriptor, ByteBuffer.TypeSerializer().descriptor)

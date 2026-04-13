@@ -11,6 +11,30 @@ sealed class ConsList<out V> : List<V> {
 
     abstract fun <Z> cata(nil: Z, cons: (V, Z) -> Z): Z
 
+    private fun requirePosition(index: Int): Int {
+        if (index !in 0..size) {
+            throw IndexOutOfBoundsException("index: $index, size: $size")
+        }
+        return index
+    }
+
+    private fun requireRange(fromIndex: Int, toIndex: Int) {
+        if (fromIndex < 0 || toIndex > size) {
+            throw IndexOutOfBoundsException("fromIndex: $fromIndex, toIndex: $toIndex, size: $size")
+        }
+        if (fromIndex > toIndex) {
+            throw IllegalArgumentException("fromIndex: $fromIndex > toIndex: $toIndex")
+        }
+    }
+
+    private fun dropElements(count: Int): ConsList<V> {
+        var current: ConsList<V> = this
+        repeat(count) {
+            current = (current as Cons).tail
+        }
+        return current
+    }
+
     fun cons(value: @UnsafeVariance V): Cons<V> = Cons(value, this)
 
     fun head(): V =
@@ -240,13 +264,68 @@ sealed class ConsList<out V> : List<V> {
         }
     }
 
-    override fun listIterator(): ListIterator<V> = toList().listIterator()
+    override fun listIterator(): ListIterator<V> {
+        return listIterator(0)
+    }
 
-    override fun listIterator(index: Int): ListIterator<V> = toList().listIterator(index)
+    override fun listIterator(index: Int): ListIterator<V> {
+        requirePosition(index)
 
-    // FIXME: This can be implemented more efficiently.
-    override fun subList(fromIndex: Int, toIndex: Int): List<V> =
-        toList().subList(fromIndex, toIndex)
+        var previous: ConsList<V> = Nil
+        var remaining: ConsList<V> = this
+        repeat(index) {
+            val current = remaining as Cons
+            previous = Cons(current.head, previous)
+            remaining = current.tail
+        }
+
+        return object : ListIterator<V> {
+            private var before: ConsList<V> = previous
+            private var after: ConsList<V> = remaining
+            private var position = index
+
+            override fun hasNext(): Boolean = position < size
+
+            override fun next(): V {
+                if (!hasNext()) throw NoSuchElementException()
+                val current = after as Cons
+                before = Cons(current.head, before)
+                after = current.tail
+                position += 1
+                return current.head
+            }
+
+            override fun hasPrevious(): Boolean = position > 0
+
+            override fun previous(): V {
+                if (!hasPrevious()) throw NoSuchElementException()
+                val current = before as Cons
+                after = Cons(current.head, after)
+                before = current.tail
+                position -= 1
+                return current.head
+            }
+
+            override fun nextIndex(): Int = position
+
+            override fun previousIndex(): Int = position - 1
+        }
+    }
+
+    override fun subList(fromIndex: Int, toIndex: Int): List<V> {
+        requireRange(fromIndex, toIndex)
+        val sliceSize = toIndex - fromIndex
+        if (sliceSize == 0) return emptyList()
+
+        var current = dropElements(fromIndex)
+        var result: ConsList<V> = Nil
+        repeat(sliceSize) {
+            val cons = current as Cons
+            result = Cons(cons.head, result)
+            current = cons.tail
+        }
+        return result.reverse()
+    }
 
     final override fun equals(other: Any?): Boolean {
         if (this === other) return true
