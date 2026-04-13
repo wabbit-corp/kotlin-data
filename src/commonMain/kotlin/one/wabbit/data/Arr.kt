@@ -30,7 +30,8 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = Arr.TypeSerializer::class)
-class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership) {
+class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership) :
+    Iterable<T> {
     constructor(unsafe: Array<Any?>) : this(unsafe.copyOf(), UnsafeOwnership)
 
     private val unsafe: Array<Any?> = unsafe
@@ -142,7 +143,7 @@ class Arr<out T> private constructor(unsafe: Array<Any?>, @Suppress("UNUSED_PARA
         }
     }
 
-    operator fun iterator(): Iterator<T> = ArrIterator(unsafe) as Iterator<T>
+    override operator fun iterator(): Iterator<T> = ArrIterator(unsafe) as Iterator<T>
 
     fun toList(): List<T> = unsafe.toList() as List<T>
 

@@ -16,12 +16,14 @@ import kotlinx.serialization.encoding.Encoder
  *
  * Complexity notes:
  * - [enqueue], [snoc], [dequeue], and [uncons] are amortized O(1)
+ * - [enqueueAll], [toList], iteration, equality, hashing, and serialization are O(n)
  * - [size], [frontSize], and [backSize] are O(1)
- * - equality, hashing, and serialization are O(n)
+ * - [peek] and [peekOrNull] are amortized O(1)
  *
  * Exception contracts:
  * - this type does not throw on empty dequeue; [dequeue] and [uncons] return `null` inside [Need]
  *   and [dequeueOrNull] returns `null`
+ * - [peek] throws [NoSuchElementException] on an empty queue, while [peekOrNull] returns `null`
  *
  * Naming:
  * - [enqueue] and [snoc] are aliases
@@ -33,7 +35,7 @@ class BankersQueue<out A> private constructor(
     val left: LazyList<A>,
     val rs: Int,
     val right: ConsList<A>,
-) {
+) : Iterable<A> {
     val frontSize: Int
         get() = ls
 
@@ -45,9 +47,25 @@ class BankersQueue<out A> private constructor(
 
     fun isEmpty(): Boolean = ls == 0
 
+    fun peek(): A = peekOrNull() ?: throw NoSuchElementException("BankersQueue is empty")
+
+    fun peekOrNull(): A? =
+        when (val value = left.thunk.value) {
+            is LazyList.Nil -> null
+            is LazyList.Cons -> value.head
+        }
+
     fun enqueue(x: @UnsafeVariance A): BankersQueue<A> = check(ls, left, rs + 1, right.cons(x))
 
     fun snoc(x: @UnsafeVariance A): BankersQueue<A> = check(ls, left, rs + 1, right.cons(x))
+
+    fun enqueueAll(xs: Iterable<@UnsafeVariance A>): BankersQueue<A> {
+        var result: BankersQueue<A> = this
+        for (value in xs) {
+            result = result.enqueue(value)
+        }
+        return result
+    }
 
     fun enqueueAllReversed(xs: ConsList<@UnsafeVariance A>): BankersQueue<A> =
         check(ls, left, rs + xs.size, xs + right)
@@ -72,6 +90,10 @@ class BankersQueue<out A> private constructor(
         }
 
     fun dequeueOrNull(): Pair<A, BankersQueue<A>>? = dequeue().value
+
+    fun toList(): List<A> = toLogicalList()
+
+    override operator fun iterator(): Iterator<A> = toLogicalList().iterator()
 
     override fun equals(other: Any?): Boolean =
         other is BankersQueue<*> && toLogicalList() == other.toLogicalList()

@@ -7,6 +7,34 @@ import kotlin.test.assertFailsWith
 
 class ExceptionContractSpec {
     @Test
+    fun `lazy list get rejects negative indices with index out of bounds`() {
+        val list = lazyConsListOf(1, 2, 3)
+
+        assertFailsWith<IndexOutOfBoundsException> {
+            list[-1]
+        }
+    }
+
+    @Test
+    fun `chunk head uses no such element on empty chunk`() {
+        assertFailsWith<NoSuchElementException> {
+            Chunk.empty<Int>().head
+        }
+    }
+
+    @Test
+    fun `leftist heap empty access uses one empty element contract`() {
+        val empty = LeftistHeap.empty<Int>()
+
+        assertFailsWith<NoSuchElementException> {
+            empty.findMin()
+        }
+        assertFailsWith<NoSuchElementException> {
+            empty.deleteMin()
+        }
+    }
+
+    @Test
     fun `arr iterator next throws no such element when exhausted`() {
         val iterator = arrOf(1).iterator()
         iterator.next()

@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface Option<out A> {
+sealed class Option<out A> {
     fun isEmpty(): Boolean = this is None
 
     fun isNotEmpty(): Boolean = this is Some<A>
@@ -19,6 +19,24 @@ sealed interface Option<out A> {
         when (this) {
             is None -> None
             is Some -> f(this.value)
+        }
+
+    fun getOrElse(block: () -> @UnsafeVariance A): A =
+        when (this) {
+            is None -> block()
+            is Some -> value
+        }
+
+    fun orElse(block: () -> Option<@UnsafeVariance A>): Option<A> =
+        when (this) {
+            is None -> block()
+            is Some -> this
+        }
+
+    fun <B> fold(ifEmpty: () -> B, ifSome: (A) -> B): B =
+        when (this) {
+            is None -> ifEmpty()
+            is Some -> ifSome(value)
         }
 
     fun orNull(): A? =
@@ -46,6 +64,6 @@ sealed interface Option<out A> {
     }
 }
 
-@Serializable @SerialName("Some") data class Some<A>(val value: A) : Option<A>
+@Serializable @SerialName("Some") data class Some<A>(val value: A) : Option<A>()
 
-@Serializable @SerialName("None") data object None : Option<Nothing>
+@Serializable @SerialName("None") data object None : Option<Nothing>()

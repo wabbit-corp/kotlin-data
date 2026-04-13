@@ -24,10 +24,52 @@ sealed class Validated<out E, out A> {
             is Success -> Success(f(value), issues)
         }
 
+    fun <B> flatMap(f: (A) -> Validated<@UnsafeVariance E, B>): Validated<E, B> =
+        when (this) {
+            is Fail -> Fail(issues)
+            is Success ->
+                when (val fv = f(value)) {
+                    is Fail -> Fail(issues + fv.issues)
+                    is Success<E, B> -> Success(fv.value, issues + fv.issues)
+                }
+        }
+
     fun <E1, A1> bimap(f: (E) -> E1, g: (A) -> A1): Validated<E1, A1> =
         when (this) {
             is Fail -> Fail(issues.map(f))
             is Success -> Success(g(value), issues.map(f))
+        }
+
+    inline fun getOrElse(block: () -> @UnsafeVariance A): A =
+        when (this) {
+            is Fail -> block()
+            is Success -> value
+        }
+
+    inline fun <R> fold(onFail: (List<E>) -> R, onSuccess: (A, List<E>) -> R): R =
+        when (this) {
+            is Fail -> onFail(issues)
+            is Success -> onSuccess(value, issues)
+        }
+
+    fun <B> zip(that: Validated<@UnsafeVariance E, B>): Validated<E, Pair<A, B>> =
+        zipWith(that) { left, right -> left to right }
+
+    fun <B, C> zipWith(
+        that: Validated<@UnsafeVariance E, B>,
+        combine: (A, B) -> C,
+    ): Validated<E, C> =
+        when (this) {
+            is Fail ->
+                when (that) {
+                    is Fail -> Fail(issues + that.issues)
+                    is Success -> Fail(issues + that.issues)
+                }
+            is Success ->
+                when (that) {
+                    is Fail -> Fail(issues + that.issues)
+                    is Success -> Success(combine(value, that.value), issues + that.issues)
+                }
         }
 
     companion object {
@@ -43,21 +85,11 @@ sealed class Validated<out E, out A> {
                 else -> succeed(value)
             }
 
-        //        fun <A, E, B> Validated<E, A>.map(f: (A) -> B): Validated<E, B> =
-        //            when (this) {
-        //                is Fail -> this
-        //                is Success -> Success(f(value))
-        //            }
-
-        fun <A, B, E> Validated<E, A>.flatMap(f: (A) -> Validated<E, B>): Validated<E, B> =
-            when (this) {
-                is Fail -> Fail(issues)
-                is Success ->
-                    when (val fv = f(value)) {
-                        is Fail -> fv
-                        is Success<E, B> -> Success(fv.value, issues + fv.issues)
-                    }
-            }
+        fun <E, A, B, C> map2(
+            left: Validated<E, A>,
+            right: Validated<E, B>,
+            combine: (A, B) -> C,
+        ): Validated<E, C> = left.zipWith(right, combine)
 
         interface Builder<Issue> {
             fun raise(issue: Issue)
@@ -98,7 +130,10 @@ sealed class Validated<out E, out A> {
 
                     override fun <A> lift(value: Validated<Issue, A>): A =
                         when (value) {
-                            is Success -> value.value
+                            is Success -> {
+                                issues += value.issues
+                                value.value
+                            }
                             is Fail -> {
                                 issues += value.issues
                                 throw AbortValidation()

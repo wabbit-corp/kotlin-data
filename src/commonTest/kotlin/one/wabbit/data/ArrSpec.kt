@@ -155,4 +155,13 @@ class ArrSpec {
         assertEquals(listOf("a", "b", "c"), map.keys().toList())
         assertEquals(listOf(1, 2, 3), map.values().toList())
     }
+
+    @Test
+    fun `arrMap exposes entry iteration and entry views`() {
+        val map = ArrMap.from(linkedMapOf("a" to 1, "b" to 2, "c" to 3))
+
+        assertEquals(listOf("a" to 1, "b" to 2, "c" to 3), map.toList())
+        assertEquals(listOf("a" to 1, "b" to 2, "c" to 3), map.entries().toList())
+        assertEquals(listOf("a" to 1, "b" to 2, "c" to 3), map.asSequence().toList())
+    }
 }

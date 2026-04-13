@@ -186,7 +186,7 @@ sealed class Chunk<out A> : Iterable<A> {
     val head: @UnsafeVariance A
         get() {
             if (isEmpty()) {
-                error("head of empty chunk")
+                throw NoSuchElementException("head of empty chunk")
             }
             return this[0]
         }

@@ -98,6 +98,9 @@ sealed interface LazyList<out E> : Iterable<E> {
         )
 
     operator fun get(n: Int): E {
+        if (n < 0) {
+            throw IndexOutOfBoundsException("Index: $n")
+        }
         var current = this
         repeat(n) {
             val strict = current.thunk.value

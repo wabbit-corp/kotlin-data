@@ -24,7 +24,7 @@ import kotlinx.serialization.encoding.Encoder
  *
  * Exception contracts:
  * - [findMin] throws [NoSuchElementException] on an empty heap
- * - [deleteMin] throws [IllegalStateException] on an empty heap
+ * - [deleteMin] throws [NoSuchElementException] on an empty heap
  */
 @Serializable(with = LeftistHeap.TypeSerializer::class)
 sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
@@ -52,7 +52,7 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
 
     fun deleteMin(): LeftistHeap<E> =
         when (this) {
-            is Empty -> throw IllegalStateException("Cannot deleteMin from an empty leftist heap")
+            is Empty -> throw NoSuchElementException("Cannot deleteMin from an empty leftist heap")
             is Node -> merge(left, right)
         }
 

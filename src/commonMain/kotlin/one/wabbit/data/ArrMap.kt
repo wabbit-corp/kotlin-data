@@ -37,7 +37,7 @@ class ArrMap<K : Any, V> private constructor(
     unsafe: Array<Any?>,
     hashes: IntArray,
     @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership,
-) {
+) : Iterable<Pair<K, V>> {
     private val unsafe: Array<Any?> = unsafe
     private val hashes: IntArray = hashes
 
@@ -150,6 +150,14 @@ class ArrMap<K : Any, V> private constructor(
         return result
     }
 
+    fun toList(): List<Pair<K, V>> {
+        val result = ArrayList<Pair<K, V>>(size)
+        for (index in hashes.indices) {
+            result += (unsafe[2 * index] as K) to (unsafe[2 * index + 1] as V)
+        }
+        return result
+    }
+
     fun toMap(): Map<K, V> = toMutableMap()
 
     fun remove(key: K): ArrMap<K, V> {
@@ -197,6 +205,27 @@ class ArrMap<K : Any, V> private constructor(
         }
         return Arr.unsafeWrapOwned(result)
     }
+
+    fun entries(): Arr<Pair<K, V>> {
+        val result = arrayOfNulls<Any?>(size)
+        for (index in hashes.indices) {
+            result[index] = (unsafe[2 * index] as K) to (unsafe[2 * index + 1] as V)
+        }
+        return Arr.unsafeWrapOwned(result)
+    }
+
+    override operator fun iterator(): Iterator<Pair<K, V>> =
+        object : Iterator<Pair<K, V>> {
+            private var index = 0
+
+            override fun hasNext(): Boolean = index < hashes.size
+
+            override fun next(): Pair<K, V> {
+                if (!hasNext()) throw NoSuchElementException()
+                val current = index++
+                return (unsafe[2 * current] as K) to (unsafe[2 * current + 1] as V)
+            }
+        }
 
     override fun toString(): String {
         val sb = StringBuilder()
