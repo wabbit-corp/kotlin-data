@@ -7,12 +7,29 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Persistent lazy linked list backed by [Need].
+ *
+ * Tails are evaluated only as demanded and then cached by their underlying [Need].
+ */
 @Serializable(with = LazyList.TypeSerializer::class)
 sealed interface LazyList<out E> : Iterable<E> {
+    /**
+     * Deferred strict representation of this lazy list.
+     */
     val thunk: Need<Strict<E>>
 
+    /**
+     * Delayed lazy-list node.
+     */
     data class Delay<out E>(override val thunk: Need<Strict<E>>) : LazyList<E> {
+        /**
+         * Factories for delayed nodes.
+         */
         companion object {
+            /**
+             * Delay evaluation of [thunk].
+             */
             operator fun <E> invoke(thunk: () -> LazyList<E>): Delay<E> =
                 Delay(Need.apply { thunk() }.flatMap { it.thunk })
         }
@@ -24,10 +41,16 @@ sealed interface LazyList<out E> : Iterable<E> {
         override fun toString(): String = toList().toString()
     }
 
+    /**
+     * Already evaluated lazy-list node.
+     */
     sealed class Strict<out E> : LazyList<E> {
         override val thunk: Need<Strict<E>> = Need.now(this)
     }
 
+    /**
+     * Empty lazy list.
+     */
     object Nil : Strict<Nothing>() {
         override fun equals(other: Any?): Boolean = lazyListEquals(this, other)
 
@@ -36,11 +59,23 @@ sealed interface LazyList<out E> : Iterable<E> {
         override fun toString(): String = toList().toString()
     }
 
+    /**
+     * Non-empty lazy-list node with [head] and [tail].
+     */
     data class Cons<E>(val head: E, val tail: LazyList<E>) : Strict<E>() {
+        /**
+         * Factories for strict cons nodes.
+         */
         companion object {
+            /**
+             * Create a cons node with a delayed strict [tail].
+             */
             operator fun <E> invoke(head: E, tail: Need<LazyList.Strict<E>>): Cons<E> =
                 Cons(head, Delay(tail))
 
+            /**
+             * Create a cons node with a delayed lazy [tail].
+             */
             operator fun <E> invoke(head: E, tail: () -> LazyList<E>): Cons<E> =
                 Cons(head, Delay(tail))
         }
@@ -52,6 +87,9 @@ sealed interface LazyList<out E> : Iterable<E> {
         override fun toString(): String = toList().toString()
     }
 
+    /**
+     * Lazily concatenate this list with [other].
+     */
     operator fun plus(other: LazyList<@UnsafeVariance E>): LazyList<E> =
         Delay(
             this.thunk.flatMap {
@@ -62,6 +100,9 @@ sealed interface LazyList<out E> : Iterable<E> {
             }
         )
 
+    /**
+     * Lazily transform each element with [f].
+     */
     fun <G> map(f: (E) -> G): LazyList<G> =
         Delay(
             this.thunk.map {
@@ -72,6 +113,9 @@ sealed interface LazyList<out E> : Iterable<E> {
             }
         )
 
+    /**
+     * Lazily transform each element with [f] and concatenate returned lists.
+     */
     fun <G> flatMap(f: (E) -> LazyList<G>): LazyList<G> =
         Delay(
             this.thunk.flatMap {
@@ -82,6 +126,9 @@ sealed interface LazyList<out E> : Iterable<E> {
             }
         )
 
+    /**
+     * Lazily keep elements accepted by [f].
+     */
     fun filter(f: (E) -> Boolean): LazyList<E> =
         Delay(
             this.thunk.flatMap {
@@ -97,6 +144,9 @@ sealed interface LazyList<out E> : Iterable<E> {
             }
         )
 
+    /**
+     * Return the element at zero-based index [n].
+     */
     operator fun get(n: Int): E {
         if (n < 0) {
             throw IndexOutOfBoundsException("Index: $n")
@@ -116,6 +166,9 @@ sealed interface LazyList<out E> : Iterable<E> {
         }
     }
 
+    /**
+     * Return at most the first [n] elements.
+     */
     fun take(n: Int): LazyList<E> =
         if (n <= 0) {
             Nil
@@ -130,8 +183,14 @@ sealed interface LazyList<out E> : Iterable<E> {
             )
         }
 
+    /**
+     * Return a lazy list with [e] before this list.
+     */
     fun prepend(e: @UnsafeVariance E): LazyList<E> = Cons(e, this)
 
+    /**
+     * Strictly materialize this lazy list into a Kotlin [List].
+     */
     fun toList(): List<E> {
         val list = mutableListOf<E>()
         var current = this
@@ -171,6 +230,9 @@ sealed interface LazyList<out E> : Iterable<E> {
             }
         }
 
+    /**
+     * Serializer that encodes lazy lists as strict Kotlin lists.
+     */
     class TypeSerializer<E>(val elementSerializer: KSerializer<E>) : KSerializer<LazyList<E>> {
         private val listSerializer = ListSerializer(elementSerializer)
         override val descriptor: SerialDescriptor = listSerializer.descriptor
@@ -183,15 +245,30 @@ sealed interface LazyList<out E> : Iterable<E> {
             lazyConsListFrom(listSerializer.deserialize(decoder))
     }
 
+    /**
+     * Factories for [LazyList].
+     */
     companion object {
+        /**
+         * Empty lazy list singleton.
+         */
         val nil: LazyList<Nothing> = Nil
 
+        /**
+         * Build a lazy list from [list] in iteration order.
+         */
         fun <A> from(list: List<A>): LazyList<A> =
             list.foldRight(LazyList.Nil as LazyList<A>) { a, acc -> acc.prepend(a) }
 
+        /**
+         * Build a lazy list from [list] in argument order.
+         */
         fun <A> from(vararg list: A): LazyList<A> =
             list.foldRight(LazyList.Nil as LazyList<A>) { a, acc -> acc.prepend(a) }
 
+        /**
+         * Build a lazy list by consuming [iterator] as elements are demanded.
+         */
         fun <A> from(iterator: Iterator<A>): LazyList<A> =
             if (iterator.hasNext()) {
                 val head = iterator.next()
@@ -200,6 +277,9 @@ sealed interface LazyList<out E> : Iterable<E> {
                 Nil
             }
 
+        /**
+         * Build a recursive lazy list.
+         */
         fun <A> recursive(f: (LazyList<A>) -> LazyList<A>): LazyList<A> =
             Delay(Need.recursive<LazyList.Strict<A>> { f(Delay(it)).thunk })
     }
@@ -240,20 +320,41 @@ private fun lazyListHashCode(list: LazyList<*>): Int {
     }
 }
 
+/**
+ * Return an empty [LazyList].
+ */
 fun <A> emptyLazyConsList(): LazyList<A> = LazyList.Nil
 
+/**
+ * Prepend this value to [list].
+ */
 fun <A> A.cons(list: LazyList<A>): LazyList<A> = LazyList.Cons(this, list)
 
+/**
+ * Build a one-element [LazyList].
+ */
 fun <A> lazyConsListOf(a: A): LazyList<A> = LazyList.Cons(a, LazyList.Nil)
 
+/**
+ * Build a two-element [LazyList].
+ */
 fun <A> lazyConsListOf(a1: A, a2: A): LazyList<A> =
     LazyList.Cons(a1, LazyList.Cons(a2, LazyList.Nil))
 
+/**
+ * Build a three-element [LazyList].
+ */
 fun <A> lazyConsListOf(a1: A, a2: A, a3: A): LazyList<A> =
     LazyList.Cons(a1, LazyList.Cons(a2, LazyList.Cons(a3, LazyList.Nil)))
 
+/**
+ * Build a [LazyList] from [list] in argument order.
+ */
 fun <A> lazyConsListOf(vararg list: A): LazyList<A> =
     list.foldRight(LazyList.Nil as LazyList<A>) { a, acc -> acc.prepend(a) }
 
+/**
+ * Build a [LazyList] by copying [list] in iteration order.
+ */
 fun <A> lazyConsListFrom(list: List<A>): LazyList<A> =
     list.foldRight(LazyList.Nil as LazyList<A>) { a, acc -> acc.prepend(a) }

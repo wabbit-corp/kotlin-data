@@ -146,6 +146,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Low-level Buffer Operations
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Ensure this buffer can store at least [requiredCapacity] elements without reallocating.
+     */
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
             val newCapacity = maxOf(this.capacity * 3 / 2, requiredCapacity)
@@ -156,6 +159,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Shrink internal capacity to the current [size].
+     */
     fun trimToSize() {
         if (usedSize < capacity) {
             buffer = buffer.copyOf(usedSize)
@@ -163,6 +169,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Remove all elements while retaining current capacity.
+     */
     fun clear() {
         usedSize = 0
     }
@@ -171,19 +180,34 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Finite C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Number of elements currently stored.
+     */
     val size: Int
         get() = usedSize
 
+    /**
+     * Return whether this buffer contains no elements.
+     */
     fun isEmpty(): Boolean = usedSize == 0
 
+    /**
+     * Return whether this buffer contains at least one element.
+     */
     fun isNotEmpty(): Boolean = usedSize != 0
 
+    /**
+     * Return whether [value] is present.
+     */
     fun contains(value: Int): Boolean = indexOf(value) != -1
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Replace every element with the result of [transform] and return this buffer.
+     */
     fun mapInPlace(transform: (Int) -> Int): IntBuffer {
         for (i in 0 until size) {
             buffer[i] = transform(buffer[i])
@@ -191,6 +215,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
+    /**
+     * Remove elements rejected by [predicate] and return this buffer.
+     */
     fun filterInPlace(predicate: (Int) -> Boolean): IntBuffer {
         var writeIndex = 0
         for (readIndex in 0 until size) {
@@ -206,6 +233,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Remove elements accepted by [predicate] and return whether anything changed.
+     */
     fun removeIf(predicate: (Int) -> Boolean): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
@@ -218,6 +248,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
+    /**
+     * Remove every occurrence of [value] and return whether anything changed.
+     */
     fun removeAll(value: Int): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
@@ -234,10 +267,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Run [action] for each element in index order.
+     */
     fun forEach(action: (Int) -> Unit) {
         for (i in 0 until size) action(buffer[i])
     }
 
+    /**
+     * Split elements into buffers that match and do not match [predicate].
+     */
     fun partition(predicate: (Int) -> Boolean): Pair<IntBuffer, IntBuffer> {
         val matching = IntBuffer()
         val nonMatching = IntBuffer()
@@ -251,6 +290,10 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return matching to nonMatching
     }
 
+    /**
+     * Reduce this non-empty buffer from left to right.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun reduce(operation: (Int, Int) -> Int): Int {
         requireElement()
         var accumulator = buffer[0]
@@ -260,6 +303,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
+    /**
+     * Return whether any element satisfies [predicate].
+     */
     fun any(predicate: (Int) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return true
@@ -267,6 +313,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return false
     }
 
+    /**
+     * Return whether all elements satisfy [predicate].
+     */
     fun all(predicate: (Int) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (!predicate(buffer[i])) return false
@@ -274,6 +323,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return true
     }
 
+    /**
+     * Return whether no elements satisfy [predicate].
+     */
     fun none(predicate: (Int) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return false
@@ -281,6 +333,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return true
     }
 
+    /**
+     * Count elements that satisfy [predicate].
+     */
     fun count(predicate: (Int) -> Boolean): Int {
         var count = 0
         for (i in 0 until usedSize) {
@@ -289,9 +344,15 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return count
     }
 
+    /**
+     * Fold elements from left to right starting with [initial].
+     */
     fun <State> fold(initial: State, operation: (State, Int) -> State): State =
         foldLeft(initial, operation)
 
+    /**
+     * Materialize this buffer as a mutable list.
+     */
     fun toMutableList(): MutableList<Int> {
         val result = mutableListOf<Int>()
         for (i in 0 until usedSize) {
@@ -300,8 +361,14 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
+    /**
+     * Materialize this buffer as a read-only list.
+     */
     fun toList(): List<Int> = toMutableList()
 
+    /**
+     * Materialize distinct elements as a mutable set.
+     */
     fun toMutableSet(): MutableSet<Int> {
         val result = mutableSetOf<Int>()
         for (i in 0 until usedSize) {
@@ -310,8 +377,14 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
+    /**
+     * Copy the active contents into a primitive array.
+     */
     fun toIntArray(): IntArray = buffer.copyOfRange(0, size)
 
+    /**
+     * Return a mutable copy of this buffer.
+     */
     fun toIntBuffer(): IntBuffer {
         val copy = IntBuffer(usedSize)
         buffer.copyInto(copy.buffer, 0, 0, usedSize)
@@ -319,8 +392,14 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
+    /**
+     * Return a mutable copy of this buffer.
+     */
     fun copy(): IntBuffer = toIntBuffer()
 
+    /**
+     * Iterator over buffer contents in index order.
+     */
     class Iterator(private val buf: IntBuffer) : kotlin.collections.Iterator<Int> {
         private var index = 0
 
@@ -332,12 +411,18 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Return an iterator over buffer contents in index order.
+     */
     operator fun iterator(): Iterator = Iterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Mutable iterator that can remove the last returned element.
+     */
     class MutableIterator(private val buf: IntBuffer) :
         kotlin.collections.MutableIterator<Int> {
         private var index = 0
@@ -359,12 +444,18 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Return a mutable iterator over this buffer.
+     */
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Return the first element accepted by [predicate], or null.
+     */
     fun find(predicate: (Int) -> Boolean): Int? {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return buffer[i]
@@ -372,6 +463,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return null
     }
 
+    /**
+     * Return a new buffer containing the first occurrence of each distinct element.
+     */
     fun distinct(): IntBuffer {
         val seen = mutableSetOf<Int>()
         val result = IntBuffer()
@@ -395,6 +489,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
      */
     fun binarySearch(value: Int): Int = binarySearchIndex(0, size) { buffer[it].compareTo(value) }
 
+    /**
+     * Return a sorted copy of this buffer.
+     */
     fun sorted(): IntBuffer {
         val copy = this.copy()
         copy.sort()
@@ -405,31 +502,60 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Return the element at [index]. Negative indices address from the end.
+     */
     operator fun get(index: Int): Int = buffer[normalizeAccessIndex(index)]
 
+    /**
+     * Return the element at [index], or null when out of bounds.
+     */
     fun getOrNull(index: Int): Int? {
         // Handle negative indices without throwing.
         val idx = if (index < 0) usedSize + index else index
         return if (idx in 0 until usedSize) buffer[idx] else null
     }
 
+    /**
+     * Return the element at [index], or [defaultValue] when out of bounds.
+     */
     inline fun getOrElse(index: Int, defaultValue: () -> Int): Int {
         val value = getOrNull(index)
         return value ?: defaultValue()
     }
 
+    /**
+     * Return the first element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun first(): Int =
         if (usedSize > 0) buffer[0] else throw NoSuchElementException("Buffer is empty")
 
+    /**
+     * Return the first element, or null when empty.
+     */
     fun firstOrNull(): Int? = if (usedSize > 0) buffer[0] else null
 
+    /**
+     * Return the last element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun last(): Int =
         if (usedSize > 0) buffer[usedSize - 1] else throw NoSuchElementException("Buffer is empty")
 
+    /**
+     * Return the last element, or null when empty.
+     */
     fun lastOrNull(): Int? = if (usedSize > 0) buffer[usedSize - 1] else null
 
+    /**
+     * Return the first element accepted by [predicate], or null.
+     */
     fun findFirst(predicate: (Int) -> Boolean): Int? = find(predicate)
 
+    /**
+     * Return the last element accepted by [predicate], or null.
+     */
     fun findLast(predicate: (Int) -> Boolean): Int? {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return buffer[i]
@@ -437,6 +563,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return null
     }
 
+    /**
+     * Return the first index of [value], or `-1` when absent.
+     */
     fun indexOf(value: Int): Int {
         for (i in 0 until size) {
             if (sameValue(buffer[i], value)) return i
@@ -444,6 +573,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
+    /**
+     * Return the last index of [value], or `-1` when absent.
+     */
     fun indexOfLast(value: Int): Int {
         for (i in size - 1 downTo 0) {
             if (sameValue(buffer[i], value)) return i
@@ -451,6 +583,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
+    /**
+     * Return the first index accepted by [predicate], or `-1`.
+     */
     fun indexWhere(predicate: (Int) -> Boolean): Int {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return i
@@ -458,6 +593,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
+    /**
+     * Return the first index accepted by [predicate], or `-1`.
+     */
     fun indexOfFirst(predicate: (Int) -> Boolean): Int = indexWhere(predicate)
 
     fun indexOfLast(predicate: (Int) -> Boolean): Int {
@@ -467,6 +605,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
+    /**
+     * Return all indices accepted by [predicate].
+     */
     fun indicesWhere(predicate: (Int) -> Boolean): IntBuffer {
         val indices = IntBuffer()
         for (i in 0 until usedSize) {
@@ -475,10 +616,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return indices
     }
 
+    /**
+     * Run [action] with each index and value.
+     */
     fun forEachIndexed(action: (index: Int, value: Int) -> Unit) {
         for (i in 0 until size) action(i, buffer[i])
     }
 
+    /**
+     * Fold elements from left to right starting with [initial].
+     */
     fun <State> foldLeft(initial: State, operation: (State, Int) -> State): State {
         var accumulator = initial
         for (i in 0 until usedSize) {
@@ -487,6 +634,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
+    /**
+     * Fold elements from right to left starting with [initial].
+     */
     fun <State> foldRight(initial: State, operation: (Int, State) -> State): State {
         var accumulator = initial
         for (i in usedSize - 1 downTo 0) {
@@ -499,10 +649,16 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Replace the element at [index]. Negative indices address from the end.
+     */
     operator fun set(index: Int, value: Int) {
         buffer[normalizeAccessIndex(index)] = value
     }
 
+    /**
+     * Fill the normalized range `[fromIndex, toIndex)` with [value].
+     */
     fun fill(value: Int, fromIndex: Int = 0, toIndex: Int = usedSize) {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         for (i in start until end) {
@@ -510,6 +666,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Fill [range] with [value] after normalizing slice bounds.
+     */
     operator fun set(range: IntRange, value: Int) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         for (i in start until end) {
@@ -517,6 +676,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Replace [range] with [values]. The normalized range length must match [values].
+     */
     operator fun set(range: IntRange, values: IntArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
@@ -526,6 +688,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
+    /**
+     * Replace a range starting at [fromIndex] with values from [values].
+     */
     fun setRange(
         fromIndex: Int,
         values: IntArray,
@@ -546,6 +711,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
+    /**
+     * Reverse this buffer in place.
+     */
     fun reverse() {
         var left = 0
         var right = size - 1
@@ -558,6 +726,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Shuffle this buffer in place using [random].
+     */
     fun shuffle(random: kotlin.random.Random) {
         for (i in size - 1 downTo 1) {
             val j = random.nextInt(i + 1)
@@ -567,6 +738,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(index: Int, value: Int) {
         val idx = normalizeInsertIndex(index)
         ensureCapacity(usedSize + 1)
@@ -577,11 +751,17 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize++
     }
 
+    /**
+     * Append [value] to the end of this buffer.
+     */
     fun add(value: Int) {
         ensureCapacity(usedSize + 1)
         buffer[usedSize++] = value
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(index: Int, values: IntArray, startIndex: Int = 0, endIndex: Int = values.size) {
         val idx = normalizeInsertIndex(index)
         requireSliceIndexRange(startIndex, endIndex, values.size)
@@ -594,6 +774,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(
         index: Int,
         values: List<Int>,
@@ -613,6 +796,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(index: Int, values: Collection<Int>) {
         var idx = normalizeInsertIndex(index)
         val addSize = values.size
@@ -626,15 +812,24 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(index: Int, value: IntBuffer) {
         insertAt(index, value.buffer, 0, value.usedSize)
     }
 
+    /**
+     * Insert value(s) at [index], shifting existing elements to the right.
+     */
     fun insertAt(index: Int, values: IntDeque) {
         // Assuming IntDeque has a toIntArray() method.
         insertAt(index, values.toIntArray())
     }
 
+    /**
+     * Remove and return the element at [index]. Negative indices address from the end.
+     */
     fun removeAt(index: Int): Int {
         val idx = normalizeAccessIndex(index)
         val value = buffer[idx]
@@ -645,16 +840,27 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return value
     }
 
+    /**
+     * Remove and return the first element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun removeFirst(): Int {
         requireElement()
         return removeAt(0)
     }
 
+    /**
+     * Remove and return the last element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun removeLast(): Int {
         requireElement()
         return removeAt(usedSize - 1)
     }
 
+    /**
+     * Bidirectional iterator over buffer contents.
+     */
     class ListIterator(private val buf: IntBuffer) : kotlin.collections.ListIterator<Int> {
         private var index = 0
 
@@ -677,20 +883,32 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         override fun previousIndex(): Int = index - 1
     }
 
+    /**
+     * Return a bidirectional iterator over this buffer.
+     */
     fun listIterator(): ListIterator = ListIterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Indexable C + Mutable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Sort this buffer in ascending natural order.
+     */
     fun sort() {
         buffer.sort(0, size)
     }
 
+    /**
+     * Sort this buffer in descending natural order.
+     */
     fun sortDescending() {
         buffer.sortDescending(0, size)
     }
 
+    /**
+     * Return a descending-sorted copy of this buffer.
+     */
     fun sortedDescending(): IntBuffer {
         val copy = this.copy()
         copy.sort()
@@ -698,6 +916,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
+    /**
+     * Swap elements at [index1] and [index2]. Negative indices address from the end.
+     */
     fun swap(index1: Int, index2: Int) {
         val idx1 = normalizeAccessIndex(index1)
         val idx2 = normalizeAccessIndex(index2)
@@ -706,6 +927,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         buffer[idx2] = temp
     }
 
+    /**
+     * Remove the normalized range `[from, to)` and return it as an array.
+     */
     fun extractSliceAsArray(from: Int, to: Int): IntArray {
         val (start, end) = normalizeRange(from, to)
         val result = buffer.copyOfRange(start, end)
@@ -716,6 +940,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
+    /**
+     * Copy the normalized range `[fromIndex, toIndex)` into a new buffer.
+     */
     fun copyRangeAsBuffer(fromIndex: Int, toIndex: Int): IntBuffer {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         val newBuffer = IntBuffer(end - start)
@@ -724,6 +951,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return newBuffer
     }
 
+    /**
+     * Remove the normalized range `[fromIndex, toIndex)` from this buffer.
+     */
     fun removeRange(fromIndex: Int, toIndex: Int) {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         val rangeSize = end - start
@@ -738,6 +968,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C + Comparable T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Return the minimum element, or null when empty.
+     */
     fun minOrNull(): Int? {
         if (usedSize == 0) return null
         var minValue = buffer[0]
@@ -747,8 +980,15 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return minValue
     }
 
+    /**
+     * Return the minimum element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun min(): Int = minOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
+    /**
+     * Return the maximum element, or null when empty.
+     */
     fun maxOrNull(): Int? {
         if (usedSize == 0) return null
         var maxValue = buffer[0]
@@ -758,12 +998,19 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
         return maxValue
     }
 
+    /**
+     * Return the maximum element.
+     * @throws NoSuchElementException when this buffer is empty.
+     */
     fun max(): Int = maxOrNull() ?: throw NoSuchElementException("Buffer is empty")
 
     // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Numeric T
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Return the sum of all elements.
+     */
     fun sum(): Int {
         var s = 0
         for (i in 0 until usedSize) s += buffer[i]
@@ -774,11 +1021,23 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     // Companion Object
     // /////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Factories for primitive buffers.
+     */
     companion object {
+        /**
+         * Return an empty buffer.
+         */
         fun empty(): IntBuffer = IntBuffer()
 
+        /**
+         * Return an empty buffer with [capacity].
+         */
         fun withCapacity(capacity: Int): IntBuffer = IntBuffer(capacity)
 
+        /**
+         * Build a buffer of [size] values by calling [init] for each index.
+         */
         fun generate(size: Int, init: (Int) -> Int): IntBuffer {
             val buffer = IntBuffer(size)
             for (i in 0 until size) {
@@ -787,6 +1046,9 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
+        /**
+         * Concatenate [buffers] into a new buffer.
+         */
         fun concat(vararg buffers: IntBuffer): IntBuffer {
             // Pre-calculate the total number of elements
             val totalSize = buffers.sumOf { it.size }
@@ -808,18 +1070,33 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
             return result
         }
 
+        /**
+         * Copy [values] into a new buffer.
+         */
         fun from(values: Collection<Int>): IntBuffer {
             val buffer = IntBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
 
+        /**
+         * Copy [values] into a new buffer.
+         */
         fun from(values: IntArray): IntBuffer = IntBuffer(values)
 
+        /**
+         * Copy [values] into a new buffer.
+         */
         fun from(values: IntBuffer): IntBuffer = values.copy()
 
+        /**
+         * Copy [values] into a new buffer.
+         */
         fun from(values: IntDeque): IntBuffer = IntBuffer(values.toIntArray())
 
+        /**
+         * Build a buffer containing [values].
+         */
         fun of(vararg values: Int): IntBuffer {
             val buffer = IntBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
@@ -828,4 +1105,7 @@ class IntBuffer(@JvmField internal var capacity: Int = 16) {
     }
 }
 
+/**
+ * Build a [IntBuffer] containing [values].
+ */
 fun intBufferOf(vararg values: Int): IntBuffer = IntBuffer.of(*values)

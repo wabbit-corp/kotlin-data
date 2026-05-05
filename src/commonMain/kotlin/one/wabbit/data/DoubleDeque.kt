@@ -131,6 +131,9 @@ class DoubleDeque(initialCapacity: Int = 16) {
         tail = usedSize
     }
 
+    /**
+     * Materialize this deque from front to back as a list.
+     */
     fun toList(): List<Double> {
         val result = ArrayList<Double>(usedSize)
         for (i in 0 until usedSize) {
@@ -139,6 +142,9 @@ class DoubleDeque(initialCapacity: Int = 16) {
         return result
     }
 
+    /**
+     * Copy deque contents from front to back into a primitive array.
+     */
     fun toDoubleArray(): DoubleArray {
         val result = DoubleArray(usedSize)
         for (i in 0 until usedSize) {
@@ -147,21 +153,38 @@ class DoubleDeque(initialCapacity: Int = 16) {
         return result
     }
 
+    /**
+     * Return whether this deque has no elements.
+     */
     fun isEmpty(): Boolean = usedSize == 0
 
+    /**
+     * Return whether this deque has at least one element.
+     */
     fun isNotEmpty(): Boolean = usedSize != 0
 
+    /**
+     * Remove all elements while retaining current capacity.
+     */
     fun clear() {
         head = 0
         tail = 0
         usedSize = 0
     }
 
+    /**
+     * Return the front element.
+     * @throws NoSuchElementException when this deque is empty.
+     */
     fun peekFirst(): Double {
         requireElement()
         return buffer[head]
     }
 
+    /**
+     * Return the back element.
+     * @throws NoSuchElementException when this deque is empty.
+     */
     fun peekLast(): Double {
         requireElement()
         return buffer[(tail - 1 + capacity) % capacity]
@@ -287,8 +310,14 @@ class DoubleDeque(initialCapacity: Int = 16) {
         }
     }
 
+    /**
+     * Return an iterator from front to back.
+     */
     operator fun iterator(): Iterator = Iterator(this)
 
+    /**
+     * Number of elements in this deque.
+     */
     val size: Int
         get() = usedSize
 
@@ -312,7 +341,9 @@ class DoubleDeque(initialCapacity: Int = 16) {
         return result
     }
 
-    /** Expose the current number of elements. */
+    /**
+     * Compatibility alias for [size].
+     */
     val length: Int
         get() = usedSize
 
@@ -331,13 +362,28 @@ class DoubleDeque(initialCapacity: Int = 16) {
         }
     }
 
+    /**
+     * Factories for primitive deques.
+     */
     companion object {
+        /**
+         * Return an empty deque.
+         */
         fun empty(): DoubleDeque = DoubleDeque(0)
 
+        /**
+         * Return a deque containing one [value].
+         */
         fun of(value: Double): DoubleDeque = DoubleDeque(doubleArrayOf(value))
 
+        /**
+         * Return a deque containing [values].
+         */
         fun of(vararg values: Double): DoubleDeque = DoubleDeque(values)
     }
 }
 
+/**
+ * Copy this primitive array into a new [DoubleDeque].
+ */
 fun DoubleArray.toDeque(): DoubleDeque = DoubleDeque(this)

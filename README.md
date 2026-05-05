@@ -1,151 +1,117 @@
 # kotlin-data
 
-The Kotlin Data project, "kotlin-data", provides a collection of data structures and utilities for Kotlin. It focuses on performance and functional programming.
+`kotlin-data` is a Kotlin Multiplatform collection and data-structure library for compact immutable
+collections, mutable primitive buffers, persistent queues and heaps, and small functional result
+types.
 
-## Overview
-
-Kotlin Data includes various data structures like enhanced arrays, maps, lazy lists, and persistent queues. It also offers functional types like `Either` and `Option`, and utility functions for string manipulation, randomization, and set operations. The project uses code generation for consistency and to reduce redundancy.
+It is intended for projects that need predictable data-structure behavior without pulling in a large
+runtime. The library includes immutable value-oriented containers such as `Arr`, `ArrMap`, `Chain`,
+`Chunk`, `ConsList`, `LazyList`, and `BankersQueue`; mutable primitive buffers and deques; and
+functional types such as `Option`, `Either`, and `Validated`.
 
 ## Installation
 
-Add the following dependency to your project:
-
 ```kotlin
 repositories {
-    maven("https://jitpack.io")
+    mavenCentral()
 }
 
 dependencies {
-    implementation("com.github.wabbit-corp:kotlin-data:1.0.0")
+    implementation("one.wabbit:kotlin-data:3.0.0")
 }
 ```
 
-## Usage
+## Quick Start
 
-### 1. `Arr.kt`
-**Purpose**:
-- A generic data class `Arr<T>` providing functionalities similar to a list with additional methods like `map`, `mapOrNull`, `all`, `any`, and more.
-- Includes serialization support.
-
-**Usage Example**:
 ```kotlin
-val arr = Arr.of(1, 2, 3)
-val newArr = arr.map { it * 2 }
-println(newArr.toList())  // Output: [2, 4, 6]
+import one.wabbit.data.Arr
+import one.wabbit.data.Option
+import one.wabbit.data.Validated
+import one.wabbit.data.arrOf
 
-if (arr.any { it > 2 }) {
-    println("Contains elements greater than 2")
-}
+val values = arrOf(1, 2, 3)
+val doubled: Arr<Int> = values.map { it * 2 }
+
+val maybeFirst: Option<Int> =
+    Option.of(values.firstOrNull())
+
+val checked: Validated<String, Int> =
+    Validated.succeed(doubled.last())
+
+check(doubled.toList() == listOf(2, 4, 6))
+check(maybeFirst.orNull() == 1)
+check(checked is Validated.Success)
 ```
 
-### 2. `ArrMap.kt`
-**Purpose**:
-- A map-like structure implemented with an array, supporting basic operations like `get`, `put`, and `contains`.
+## What Is Included
 
-**Usage Example**:
+- `Arr` and `ArrMap`: compact immutable array-backed sequence and small-map types.
+- `Chunk`, `Chain`, `ConsList`, and `LazyList`: collection building blocks for persistent and lazy workflows.
+- `BankersQueue` and `LeftistHeap`: persistent queue and priority-queue structures.
+- `BooleanBuffer`, `IntBuffer`, `DoubleBuffer`, and other primitive buffers: mutable contiguous buffers without boxing.
+- `BooleanDeque`, `IntDeque`, `DoubleDeque`, and other primitive deques: mutable ring-buffer deques for both-end operations.
+- `Option`, `Either`, and `Validated`: small functional result/value types.
+- JVM/Android helpers for weak sets/maps, UUID byte conversion, enum-set copying, and deterministic shuffling.
+
+## Buffer Example
+
+Primitive buffers are mutable and own their internal arrays:
+
 ```kotlin
-val map = ArrMap.empty<String, Int>()
-val updatedMap = map.put("key1", 10)
-println(updatedMap["key1"])  // Output: 10
+import one.wabbit.data.IntBuffer
 
-if ("key1" in updatedMap) {
-    println("Contains key1")
-}
+val buffer = IntBuffer.of(1, 2, 3)
+buffer.add(4)
+val removed = buffer.removeAt(0)
+
+check(removed == 1)
+check(buffer.toList() == listOf(2, 3, 4))
 ```
 
-### 3. `BankersQueue.kt`
-**Purpose**:
-- An implementation of a persistent queue based on the Banker's queue algorithm.
+Buffers support negative indices for documented element access and update operations. Range-style
+operations clamp like Python slices where documented.
 
-**Usage Example**:
+## Persistent Queue Example
+
 ```kotlin
-val queue = BankersQueue.fromConsList(consListOf(1, 2, 3))
-val (element, newQueue) = queue.uncons().value!!
-println(element)  // Output: 1
+import one.wabbit.data.BankersQueue
+
+val queue = BankersQueue.empty<String>()
+    .enqueue("first")
+    .enqueue("second")
+
+val next = queue.dequeueOrNull()
+
+check(next?.first == "first")
+check(next?.second?.peekOrNull() == "second")
 ```
 
-### 4. `Buf.kt` and Its Variants
-**Purpose**:
-- Buffers like `BooleanBuf`, `ByteBuf`, etc., provide a resizable array implementation with functionalities to push, pop, and manage capacity.
+## Status
 
-**Usage Example**:
-```kotlin
-val intBuf = IntBuf()
-intBuf.pushLast(5)
-intBuf.pushLast(10)
-println(intBuf.toList())  // Output: [5, 10]
-```
+This library is stable enough for internal production use, but the public API is still broad and
+evolving. Expect documentation and compatibility notes to be maintained as part of publication
+prep; avoid depending on undocumented implementation details or internal storage classes.
 
-### 5. `Chain.kt`
-**Purpose**:
-- Represents a lazy concatenation of elements which can be efficiently concatenated and converted to arrays or lists.
+## Documentation
 
-**Usage Example**:
-```kotlin
-val chain = Chain.of(1, 2) + Chain.of(3, 4)
-println(chain.toList())  // Output: [1, 2, 3, 4]
-```
+- [User guide](docs/user-guide.md)
+- [API reference notes](docs/api-reference.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development](docs/development.md)
 
-### 6. `ConsList.kt`
-**Purpose**:
-- A persistent linked list implementation with various utility methods.
+Generated API docs can be built locally with Dokka. See [API reference notes](docs/api-reference.md)
+for the command.
 
-**Usage Example**:
-```kotlin
-val list = consListOf(1, 2, 3)
-val newList = list.cons(0)
-println(newList.toList())  // Output: [0, 1, 2, 3]
-```
+## Release Notes
 
-### 7. `Either.kt`
-**Purpose**:
-- A representation of a value that can be one of two possible types, `Left` or `Right`, often used for error handling.
-
-**Usage Example**:
-```kotlin
-val result: Either<String, Int> = Right(42)
-val mapped = result.map { it + 1 }
-println(mapped)  // Output: Right(value=43)
-```
-
-### 8. `Option.kt`
-**Purpose**:
-- Represents an optional value, encapsulating presence or absence of a value.
-
-**Usage Example**:
-```kotlin
-val someValue: Option<Int> = Some(10)
-val noneValue: Option<Int> = None
-println(someValue.map { it * 2 })  // Output: Some(value=20)
-```
-
-### 9. `LeftistHeap.kt`
-**Purpose**:
-- Implements a leftist heap, a type of priority queue.
-
-**Usage Example**:
-```kotlin
-val heap = LeftistHeap.of(3, 1, 4, 1, 5, 9)
-println(heap.findMin())  // Output: 1
-```
-
-### 10. `Validated.kt`
-**Purpose**:
-- Represents a value that may be valid or invalid, accumulating issues.
-
-**Usage Example**:
-```kotlin
-val success = Validated.succeed("Valid")
-val failure = Validated.fail(listOf("Error1", "Error2"))
-println(success.map { it.uppercase() })  // Output: Success(value=VALID, issues=[])
-```
+- [CHANGELOG.md](CHANGELOG.md)
 
 ## Licensing
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) for open source use.
 
-For commercial use, please contact Wabbit Consulting Corporation (at wabbit@wabbit.one) for licensing terms.
+For commercial use, contact Wabbit Consulting Corporation at `wabbit@wabbit.one`.
 
 ## Contributing
 
-Before we can accept your contributions, we kindly ask you to agree to our Contributor License Agreement (CLA).
+Before contributions can be merged, contributors need to agree to the repository CLA.

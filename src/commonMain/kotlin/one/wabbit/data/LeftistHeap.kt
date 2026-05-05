@@ -28,12 +28,21 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Serializable(with = LeftistHeap.TypeSerializer::class)
 sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
+    /**
+     * Number of values stored in this heap.
+     */
     abstract val size: Int
 
+    /**
+     * Empty heap.
+     */
     data object Empty : LeftistHeap<Nothing>() {
         override val size: Int = 0
     }
 
+    /**
+     * Internal non-empty heap node.
+     */
     @InternalDataApi
     class Node<E : Comparable<E>> @InternalDataApi constructor(
         val rank: Int,
@@ -44,20 +53,34 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
         override val size: Int = 1 + left.size + right.size
     }
 
+    /**
+     * Return the minimum value, or throw [NoSuchElementException] when empty.
+     */
     fun findMin(): E =
         when (this) {
             is Empty -> throw NoSuchElementException()
             is Node -> value
         }
 
+    /**
+     * Return this heap without its minimum value.
+     *
+     * @throws NoSuchElementException when this heap is empty.
+     */
     fun deleteMin(): LeftistHeap<E> =
         when (this) {
             is Empty -> throw NoSuchElementException("Cannot deleteMin from an empty leftist heap")
             is Node -> merge(left, right)
         }
 
+    /**
+     * Merge this heap with [that].
+     */
     fun merge(that: LeftistHeap<@UnsafeVariance E>): LeftistHeap<E> = Companion.merge(this, that)
 
+    /**
+     * Return this heap with [value] inserted.
+     */
     fun insert(value: @UnsafeVariance E): LeftistHeap<E> = merge(Node(1, value, Empty, Empty), this)
 
     final override fun equals(other: Any?): Boolean =
@@ -75,6 +98,9 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
         return result
     }
 
+    /**
+     * Serializer that encodes heaps as sorted lists.
+     */
     class TypeSerializer<E : Comparable<E>>(private val valueSerializer: KSerializer<E>) :
         KSerializer<LeftistHeap<E>> {
         private val listSerializer = ListSerializer(valueSerializer)
@@ -95,12 +121,24 @@ sealed class LeftistHeap<out E : Comparable<@UnsafeVariance E>> {
         }
     }
 
+    /**
+     * Factory and merge helpers for [LeftistHeap].
+     */
     companion object {
+        /**
+         * Empty heap singleton.
+         */
         val empty: LeftistHeap<Nothing> = Empty
 
+        /**
+         * Return an empty heap typed for comparable values.
+         */
         @Suppress("UNCHECKED_CAST")
         fun <E : Comparable<E>> empty(): LeftistHeap<E> = empty as LeftistHeap<E>
 
+        /**
+         * Build a heap containing [values].
+         */
         fun <E : Comparable<E>> of(vararg values: E): LeftistHeap<E> {
             var heap: LeftistHeap<E> = empty()
             for (value in values) {

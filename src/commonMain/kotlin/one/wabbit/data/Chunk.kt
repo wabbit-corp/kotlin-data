@@ -35,17 +35,33 @@ import kotlin.math.abs
  */
 @Serializable(with = Chunk.TypeSerializer::class)
 sealed class Chunk<out A> : Iterable<A> {
+    /**
+     * Number of elements in this chunk.
+     */
     abstract val size: Int
     internal abstract val depth: Int
     internal open val concatDepth: Int
         get() = depth
 
+    /**
+     * Return whether this chunk contains no elements.
+     */
     fun isEmpty(): Boolean = size == 0
 
+    /**
+     * Return whether this chunk contains at least one element.
+     */
     fun isNotEmpty(): Boolean = size != 0
 
+    /**
+     * Return the element at [index].
+     * @throws IndexOutOfBoundsException when [index] is outside `0 until size`.
+     */
     operator abstract fun get(index: Int): A
 
+    /**
+     * Concatenate this chunk with [that].
+     */
     operator fun plus(that: Chunk<@UnsafeVariance A>): Chunk<A> =
         when {
             isEmpty() -> that
@@ -56,6 +72,9 @@ sealed class Chunk<out A> : Iterable<A> {
             else -> Concat(arrayOf(this, that)).rebalance()
         }
 
+    /**
+     * Return a chunk with [element] appended.
+     */
     fun append(element: @UnsafeVariance A): Chunk<A> =
         when (this) {
             Empty -> Single(element)
@@ -67,6 +86,9 @@ sealed class Chunk<out A> : Iterable<A> {
             }
         }
 
+    /**
+     * Return a chunk with [element] prepended.
+     */
     fun prepend(element: @UnsafeVariance A): Chunk<A> =
         when (this) {
             Empty -> Single(element)
@@ -78,6 +100,9 @@ sealed class Chunk<out A> : Iterable<A> {
             }
         }
 
+    /**
+     * Return a chunk with [value] stored at [index].
+     */
     fun update(index: Int, value: @UnsafeVariance A): Chunk<A> =
         when (this) {
             Empty -> throw IndexOutOfBoundsException("Update index=$index size=0")
@@ -120,11 +145,17 @@ sealed class Chunk<out A> : Iterable<A> {
             else -> Slice(this, 0, size - n)
         }
 
+    /**
+     * Drop elements until the first element accepted by [predicate].
+     */
     fun dropUntil(predicate: (A) -> Boolean): Chunk<A> {
         val index = indexWhere(predicate)
         return if (index < 0) Empty else drop(index)
     }
 
+    /**
+     * Drop leading elements while [predicate] returns true.
+     */
     fun dropWhile(predicate: (A) -> Boolean): Chunk<A> {
         val iterator = chunkIterator()
         var i = 0
@@ -160,6 +191,9 @@ sealed class Chunk<out A> : Iterable<A> {
             else -> Slice(this, size - n, n)
         }
 
+    /**
+     * Keep leading elements while [predicate] returns true.
+     */
     fun takeWhile(predicate: (A) -> Boolean): Chunk<A> {
         val iterator = chunkIterator()
         var i = 0
@@ -169,6 +203,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return take(i)
     }
 
+    /**
+     * Return whether any element satisfies [predicate].
+     */
     fun exists(predicate: (A) -> Boolean): Boolean {
         val iterator = chunkIterator()
         for (i in 0 until iterator.length) {
@@ -179,6 +216,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return false
     }
 
+    /**
+     * Return whether every element satisfies [predicate].
+     */
     fun forall(predicate: (A) -> Boolean): Boolean {
         val iterator = chunkIterator()
         for (i in 0 until iterator.length) {
@@ -189,6 +229,10 @@ sealed class Chunk<out A> : Iterable<A> {
         return true
     }
 
+    /**
+     * First element.
+     * @throws NoSuchElementException when this chunk is empty.
+     */
     val head: @UnsafeVariance A
         get() {
             if (isEmpty()) {
@@ -197,9 +241,15 @@ sealed class Chunk<out A> : Iterable<A> {
             return this[0]
         }
 
+    /**
+     * Return the first element as an [Option].
+     */
     fun headOption(): Option<@UnsafeVariance A> =
         if (isEmpty()) None else Some(this[0])
 
+    /**
+     * Return the last element as an [Option].
+     */
     fun lastOption(): Option<@UnsafeVariance A> =
         if (isEmpty()) None else Some(this[size - 1])
 
@@ -224,6 +274,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return -1
     }
 
+    /**
+     * Return whether this chunk and [that] have the same size and pairwise satisfy [f].
+     */
     fun <B> corresponds(that: Chunk<B>, f: (A, B) -> Boolean): Boolean {
         if (size != that.size) {
             return false
@@ -238,6 +291,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return true
     }
 
+    /**
+     * Return elements accepted by [predicate].
+     */
     fun filter(predicate: (A) -> Boolean): Chunk<A> {
         val builder = ChunkBuilder<A>(size)
         val iterator = chunkIterator()
@@ -250,6 +306,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return builder.result()
     }
 
+    /**
+     * Return the first element accepted by [predicate] as an [Option].
+     */
     fun find(predicate: (A) -> Boolean): Option<@UnsafeVariance A> {
         val iterator = chunkIterator()
         for (i in 0 until iterator.length) {
@@ -261,6 +320,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return None
     }
 
+    /**
+     * Fold elements from left to right starting with [s0].
+     */
     fun <S> foldLeft(s0: S, f: (S, A) -> S): S {
         var acc = s0
         val iterator = chunkIterator()
@@ -270,6 +332,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return acc
     }
 
+    /**
+     * Fold elements from right to left starting with [s0].
+     */
     fun <S> foldRight(s0: S, f: (A, S) -> S): S {
         var acc = s0
         val values = toArray()
@@ -279,6 +344,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return acc
     }
 
+    /**
+     * Fold left while [pred] accepts the current accumulator.
+     */
     fun <S> foldWhile(s0: S, pred: (S) -> Boolean, f: (S, A) -> S): S {
         var acc = s0
         val iterator = chunkIterator()
@@ -290,6 +358,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return acc
     }
 
+    /**
+     * Map each element with [transform] and partition [Left] and [Right] results.
+     */
     fun <X, Y> partitionMap(transform: (A) -> Either<X, Y>): Pair<Chunk<X>, Chunk<Y>> {
         val left = ChunkBuilder<X>(size)
         val right = ChunkBuilder<Y>(size)
@@ -303,6 +374,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return left.result() to right.result()
     }
 
+    /**
+     * Transform every element with [transform].
+     */
     fun <B> map(transform: (A) -> B): Chunk<B> {
         val builder = ChunkBuilder<B>(size)
         val iterator = chunkIterator()
@@ -329,8 +403,14 @@ sealed class Chunk<out A> : Iterable<A> {
         }
     }
 
+    /**
+     * Split this chunk at [n].
+     */
     fun splitAt(n: Int): Pair<Chunk<A>, Chunk<A>> = take(n) to drop(n)
 
+    /**
+     * Split before the first element accepted by [predicate].
+     */
     fun splitWhere(predicate: (A) -> Boolean): Pair<Chunk<A>, Chunk<A>> {
         val index = indexWhere(predicate)
         return if (index < 0) this to Empty else take(index) to drop(index)
@@ -346,6 +426,9 @@ sealed class Chunk<out A> : Iterable<A> {
         return result
     }
 
+    /**
+     * Materialize this chunk into a new list.
+     */
     fun toList(): List<A> = toArray().toList()
 
     override operator fun iterator(): Iterator<A> {
@@ -385,6 +468,9 @@ sealed class Chunk<out A> : Iterable<A> {
 
     abstract fun chunkIterator(): ChunkIterator<@UnsafeVariance A>
 
+    /**
+     * Base class for non-empty chunk shapes.
+     */
     sealed class NonEmpty<out A> : Chunk<A>()
 
     data object Empty : Chunk<Nothing>() {
@@ -397,6 +483,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Nothing> = EmptyChunkIterator
     }
 
+    /**
+     * Internal array-backed chunk of reference values.
+     */
     @InternalDataApi
     class ArrayChunk<A> @InternalDataApi constructor(val array: Array<A>) : NonEmpty<A>() {
         override val size: Int
@@ -412,6 +501,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal byte-array-backed chunk.
+     */
     @InternalDataApi
     class ByteArrayChunk @InternalDataApi constructor(val array: ByteArray) : NonEmpty<Byte>() {
         override val size: Int
@@ -425,6 +517,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Byte> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal boolean-array-backed chunk.
+     */
     @InternalDataApi
     class BooleanArrayChunk @InternalDataApi constructor(val array: BooleanArray) : NonEmpty<Boolean>() {
         override val size: Int
@@ -438,6 +533,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Boolean> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal int-array-backed chunk.
+     */
     @InternalDataApi
     class IntArrayChunk @InternalDataApi constructor(val array: IntArray) : NonEmpty<Int>() {
         override val size: Int
@@ -451,6 +549,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Int> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal short-array-backed chunk.
+     */
     @InternalDataApi
     class ShortArrayChunk @InternalDataApi constructor(val array: ShortArray) : NonEmpty<Short>() {
         override val size: Int
@@ -464,6 +565,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Short> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal long-array-backed chunk.
+     */
     @InternalDataApi
     class LongArrayChunk @InternalDataApi constructor(val array: LongArray) : NonEmpty<Long>() {
         override val size: Int
@@ -477,6 +581,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Long> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal float-array-backed chunk.
+     */
     @InternalDataApi
     class FloatArrayChunk @InternalDataApi constructor(val array: FloatArray) : NonEmpty<Float>() {
         override val size: Int
@@ -490,6 +597,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Float> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal double-array-backed chunk.
+     */
     @InternalDataApi
     class DoubleArrayChunk @InternalDataApi constructor(val array: DoubleArray) : NonEmpty<Double>() {
         override val size: Int
@@ -503,6 +613,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Double> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal string-backed chunk of characters.
+     */
     @InternalDataApi
     class StringChunk @InternalDataApi constructor(val string: String) : NonEmpty<Char>() {
         override val size: Int
@@ -518,6 +631,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<Char> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal single-element chunk.
+     */
     @InternalDataApi
     class Single<A> @InternalDataApi constructor(val value: A) : NonEmpty<A>() {
         override val size: Int = 1
@@ -533,6 +649,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Internal concatenated chunk node.
+     */
     @InternalDataApi
     class Concat<A> @InternalDataApi constructor(val chunks: Array<Chunk<A>>) : NonEmpty<A>() {
         override val depth: Int by lazy { 1 + (chunks.maxOfOrNull { it.depth } ?: 0) }
@@ -574,6 +693,9 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<A> = concatIteratorFor(chunks)
     }
 
+    /**
+     * Internal sliced view over another chunk.
+     */
     @InternalDataApi
     class Slice<A> @InternalDataApi constructor(val chunk: Chunk<A>, val offset: Int, val lengthSlice: Int) :
         NonEmpty<A>() {
@@ -751,12 +873,24 @@ sealed class Chunk<out A> : Iterable<A> {
         override fun chunkIterator(): ChunkIterator<A> = IndexedChunkIterator(this)
     }
 
+    /**
+     * Factories for [Chunk].
+     */
     companion object {
         @Suppress("UNCHECKED_CAST")
+        /**
+         * Return an empty chunk.
+         */
         fun <A> empty(): Chunk<A> = Empty as Chunk<A>
 
+        /**
+         * Build a chunk containing [elements].
+         */
         fun <A> chunkOf(vararg elements: A): Chunk<A> = fromArray(elements)
 
+        /**
+         * Build a chunk by copying [array].
+         */
         fun <A> fromArray(array: Array<out A>): Chunk<A> =
             when (array.size) {
                 0 -> empty()
@@ -767,30 +901,57 @@ sealed class Chunk<out A> : Iterable<A> {
                 }
             }
 
+        /**
+         * Build a byte chunk by copying [array].
+         */
         fun fromByteArray(array: ByteArray): Chunk<Byte> =
             if (array.isEmpty()) empty() else ByteArrayChunk(array.copyOf())
 
+        /**
+         * Build a boolean chunk by copying [array].
+         */
         fun fromBooleanArray(array: BooleanArray): Chunk<Boolean> =
             if (array.isEmpty()) empty() else BooleanArrayChunk(array.copyOf())
 
+        /**
+         * Build an int chunk by copying [array].
+         */
         fun fromIntArray(array: IntArray): Chunk<Int> =
             if (array.isEmpty()) empty() else IntArrayChunk(array.copyOf())
 
+        /**
+         * Build a short chunk by copying [array].
+         */
         fun fromShortArray(array: ShortArray): Chunk<Short> =
             if (array.isEmpty()) empty() else ShortArrayChunk(array.copyOf())
 
+        /**
+         * Build a long chunk by copying [array].
+         */
         fun fromLongArray(array: LongArray): Chunk<Long> =
             if (array.isEmpty()) empty() else LongArrayChunk(array.copyOf())
 
+        /**
+         * Build a float chunk by copying [array].
+         */
         fun fromFloatArray(array: FloatArray): Chunk<Float> =
             if (array.isEmpty()) empty() else FloatArrayChunk(array.copyOf())
 
+        /**
+         * Build a double chunk by copying [array].
+         */
         fun fromDoubleArray(array: DoubleArray): Chunk<Double> =
             if (array.isEmpty()) empty() else DoubleArrayChunk(array.copyOf())
 
+        /**
+         * Build a character chunk from [string].
+         */
         fun fromString(string: String): Chunk<Char> =
             if (string.isEmpty()) empty() else StringChunk(string)
 
+        /**
+         * Build a chunk by copying [list].
+         */
         fun <A> fromList(list: List<A>): Chunk<A> =
             when (list.size) {
                 0 -> empty()
@@ -798,8 +959,14 @@ sealed class Chunk<out A> : Iterable<A> {
                 else -> ArrayChunk(list.toChunkArray())
             }
 
+        /**
+         * Build a single-element chunk.
+         */
         fun <A> single(value: A): Chunk<A> = Single(value)
 
+        /**
+         * Build a chunk by repeatedly applying [generate] to a state.
+         */
         fun <S, A> unfold(seed: S, generate: (S) -> Pair<A, S>?): Chunk<A> {
             val builder = ChunkBuilder<A>()
             var state = seed
@@ -812,6 +979,9 @@ sealed class Chunk<out A> : Iterable<A> {
         }
     }
 
+    /**
+     * Serializer that encodes chunks as lists.
+     */
     class TypeSerializer<A>(private val elementSerializer: KSerializer<A>) : KSerializer<Chunk<A>> {
         private val listSerializer = ListSerializer(elementSerializer)
 
@@ -826,31 +996,61 @@ sealed class Chunk<out A> : Iterable<A> {
     }
 }
 
+/**
+ * Build a chunk containing [elements].
+ */
 fun <A> chunkOf(vararg elements: A): Chunk<A> = Chunk.chunkOf(*elements)
 
+/**
+ * Mutable builder for creating a [Chunk].
+ */
 class ChunkBuilder<A>(initialCapacity: Int = 16) {
     private val buffer = ArrayList<A>(initialCapacity)
 
+    /**
+     * Append [value] to this builder.
+     */
     operator fun plusAssign(value: A) {
         buffer += value
     }
 
+    /**
+     * Append [value] to this builder.
+     */
     fun add(value: A) {
         buffer += value
     }
 
+    /**
+     * Return the number of buffered elements.
+     */
     fun size(): Int = buffer.size
 
+    /**
+     * Return a chunk containing all buffered elements.
+     */
     fun result(): Chunk<A> = Chunk.fromArray(buffer.toChunkArray())
 }
 
 interface ChunkIterator<out A> {
+    /**
+     * Number of elements visible through this iterator.
+     */
     val length: Int
 
+    /**
+     * Return whether [index] can be read with [nextAt].
+     */
     fun hasNextAt(index: Int): Boolean = index in 0 until length
 
+    /**
+     * Return the value at [index] without advancing iterator state.
+     */
     fun nextAt(index: Int): A
 
+    /**
+     * Return an iterator over a sliced range.
+     */
     fun sliceIterator(offset: Int, length: Int): ChunkIterator<A>
 }
 
