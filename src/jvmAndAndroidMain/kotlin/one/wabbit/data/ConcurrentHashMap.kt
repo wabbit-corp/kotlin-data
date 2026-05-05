@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
 import java.util.concurrent.ConcurrentHashMap as JConcurrentHashMap
@@ -26,6 +28,5 @@ actual class ConcurrentHashMap<K : Any, V : Any> actual constructor(initialCapac
 
     actual fun size(): Int = size
 
-    actual fun entriesSnapshot(): List<Pair<K, V>> =
-        delegate.entries.map { it.key to it.value }
+    actual fun entriesSnapshot(): List<Pair<K, V>> = delegate.entries.map { it.key to it.value }
 }

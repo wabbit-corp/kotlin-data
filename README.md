@@ -1,5 +1,12 @@
 # kotlin-data
 
+![](./.meta/github-project-banner.png)
+
+<p align=center>
+    <img src="https://img.shields.io/maven-central/v/one.wabbit/kotlin-data" alt="Maven Central">
+    <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF" alt="Kotlin Multiplatform">
+</p>
+
 `kotlin-data` is a Kotlin Multiplatform collection and data-structure library for compact immutable
 collections, mutable primitive buffers, persistent queues and heaps, and small functional result
 types.
@@ -9,7 +16,7 @@ runtime. The library includes immutable value-oriented containers such as `Arr`,
 `Chunk`, `ConsList`, `LazyList`, and `BankersQueue`; mutable primitive buffers and deques; and
 functional types such as `Option`, `Either`, and `Validated`.
 
-## Installation
+## 🚀 Installation
 
 ```kotlin
 repositories {
@@ -21,7 +28,7 @@ dependencies {
 }
 ```
 
-## Quick Start
+## 🚀 Usage
 
 ```kotlin
 import one.wabbit.data.Arr

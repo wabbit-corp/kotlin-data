@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
 import kotlinx.serialization.KSerializer
@@ -30,62 +32,41 @@ import kotlinx.serialization.encoding.Encoder
  * - [dequeue] and [uncons] are aliases
  */
 @Serializable(with = BankersQueue.TypeSerializer::class)
-class BankersQueue<out A> private constructor(
-    val ls: Int,
-    val left: LazyList<A>,
-    val rs: Int,
-    val right: ConsList<A>,
-) : Iterable<A> {
-    /**
-     * Number of elements currently represented by the lazy front list.
-     */
+class BankersQueue<out A>
+private constructor(val ls: Int, val left: LazyList<A>, val rs: Int, val right: ConsList<A>) :
+    Iterable<A> {
+    /** Number of elements currently represented by the lazy front list. */
     val frontSize: Int
         get() = ls
 
-    /**
-     * Number of elements currently buffered at the back of the queue.
-     */
+    /** Number of elements currently buffered at the back of the queue. */
     val backSize: Int
         get() = rs
 
-    /**
-     * Total logical queue size.
-     */
+    /** Total logical queue size. */
     val size: Int
         get() = ls + rs
 
-    /**
-     * Return whether this queue contains no elements.
-     */
+    /** Return whether this queue contains no elements. */
     fun isEmpty(): Boolean = ls == 0
 
-    /**
-     * Return the next value to dequeue, or throw [NoSuchElementException] when empty.
-     */
+    /** Return the next value to dequeue, or throw [NoSuchElementException] when empty. */
     fun peek(): A = peekOrNull() ?: throw NoSuchElementException("BankersQueue is empty")
 
-    /**
-     * Return the next value to dequeue, or null when empty.
-     */
+    /** Return the next value to dequeue, or null when empty. */
     fun peekOrNull(): A? =
         when (val value = left.thunk.value) {
             is LazyList.Nil -> null
             is LazyList.Cons -> value.head
         }
 
-    /**
-     * Return a queue with [x] appended to the back.
-     */
+    /** Return a queue with [x] appended to the back. */
     fun enqueue(x: @UnsafeVariance A): BankersQueue<A> = check(ls, left, rs + 1, right.cons(x))
 
-    /**
-     * Alias for [enqueue].
-     */
+    /** Alias for [enqueue]. */
     fun snoc(x: @UnsafeVariance A): BankersQueue<A> = check(ls, left, rs + 1, right.cons(x))
 
-    /**
-     * Return a queue with all [xs] appended in iteration order.
-     */
+    /** Return a queue with all [xs] appended in iteration order. */
     fun enqueueAll(xs: Iterable<@UnsafeVariance A>): BankersQueue<A> {
         var result: BankersQueue<A> = this
         for (value in xs) {
@@ -94,21 +75,15 @@ class BankersQueue<out A> private constructor(
         return result
     }
 
-    /**
-     * Return a queue with [xs] appended when [xs] is already in reverse enqueue order.
-     */
+    /** Return a queue with [xs] appended when [xs] is already in reverse enqueue order. */
     fun enqueueAllReversed(xs: ConsList<@UnsafeVariance A>): BankersQueue<A> =
         check(ls, left, rs + xs.size, xs + right)
 
-    /**
-     * Alias for [enqueueAllReversed].
-     */
+    /** Alias for [enqueueAllReversed]. */
     fun snocReversed(xs: ConsList<@UnsafeVariance A>): BankersQueue<A> =
         check(ls, left, rs + xs.size, xs + right)
 
-    /**
-     * Lazily dequeue the next value and resulting queue, or null when empty.
-     */
+    /** Lazily dequeue the next value and resulting queue, or null when empty. */
     fun dequeue(): Need<Pair<A, BankersQueue<A>>?> =
         left.thunk.map {
             when (it) {
@@ -117,9 +92,7 @@ class BankersQueue<out A> private constructor(
             }
         }
 
-    /**
-     * Alias for [dequeue].
-     */
+    /** Alias for [dequeue]. */
     fun uncons(): Need<Pair<A, BankersQueue<A>>?> =
         left.thunk.map {
             when (it) {
@@ -128,14 +101,10 @@ class BankersQueue<out A> private constructor(
             }
         }
 
-    /**
-     * Strictly dequeue the next value and resulting queue, or null when empty.
-     */
+    /** Strictly dequeue the next value and resulting queue, or null when empty. */
     fun dequeueOrNull(): Pair<A, BankersQueue<A>>? = dequeue().value
 
-    /**
-     * Materialize this queue in dequeue order.
-     */
+    /** Materialize this queue in dequeue order. */
     fun toList(): List<A> = toLogicalList()
 
     override operator fun iterator(): Iterator<A> = toLogicalList().iterator()
@@ -155,10 +124,9 @@ class BankersQueue<out A> private constructor(
         }
     }
 
-    /**
-     * Serializer that encodes queues as lists in dequeue order.
-     */
-    class TypeSerializer<A>(private val valueSerializer: KSerializer<A>) : KSerializer<BankersQueue<A>> {
+    /** Serializer that encodes queues as lists in dequeue order. */
+    class TypeSerializer<A>(private val valueSerializer: KSerializer<A>) :
+        KSerializer<BankersQueue<A>> {
         private val listSerializer = ListSerializer(valueSerializer)
 
         override val descriptor: SerialDescriptor = listSerializer.descriptor
@@ -171,19 +139,13 @@ class BankersQueue<out A> private constructor(
             fromConsList(consListFrom(decoder.decodeSerializableValue(listSerializer)))
     }
 
-    /**
-     * Factory helpers for [BankersQueue].
-     */
+    /** Factory helpers for [BankersQueue]. */
     companion object {
-        /**
-         * Build a queue from [list] in list iteration order.
-         */
+        /** Build a queue from [list] in list iteration order. */
         fun <A> fromConsList(list: ConsList<A>): BankersQueue<A> =
             BankersQueue(list.size, list.toLazy(), 0, ConsList.Nil)
 
-        /**
-         * Return an empty queue.
-         */
+        /** Return an empty queue. */
         fun <A> empty(): BankersQueue<A> = BankersQueue(0, LazyList.Nil, 0, ConsList.Nil)
 
         private fun <A> check(

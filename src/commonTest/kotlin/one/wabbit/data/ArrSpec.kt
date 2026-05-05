@@ -4,15 +4,16 @@ package one.wabbit.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ArrSpec {
     private class HashCodeBomb(private val value: String) {
         override fun equals(other: Any?): Boolean = other is HashCodeBomb && value == other.value
 
-        override fun hashCode(): Int = error("hashCode should not be called on the cold equals path")
+        override fun hashCode(): Int =
+            error("hashCode should not be called on the cold equals path")
     }
 
     @Test
@@ -51,18 +52,10 @@ class ArrSpec {
     fun `arr empty access uses collection exception types`() {
         val empty = Arr.empty<Int>()
 
-        assertFailsWith<NoSuchElementException> {
-            empty.first()
-        }
-        assertFailsWith<NoSuchElementException> {
-            empty.last()
-        }
-        assertFailsWith<IndexOutOfBoundsException> {
-            empty[0]
-        }
-        assertFailsWith<IndexOutOfBoundsException> {
-            empty.update(0, 1)
-        }
+        assertFailsWith<NoSuchElementException> { empty.first() }
+        assertFailsWith<NoSuchElementException> { empty.last() }
+        assertFailsWith<IndexOutOfBoundsException> { empty[0] }
+        assertFailsWith<IndexOutOfBoundsException> { empty.update(0, 1) }
 
         assertEquals(null, empty.firstOrNull())
         assertEquals(null, empty.lastOrNull())
@@ -108,12 +101,8 @@ class ArrSpec {
     fun `arr listIterator validates bounds`() {
         val arr = arrOf(1, 2, 3)
 
-        assertFailsWith<IndexOutOfBoundsException> {
-            arr.listIterator(-1)
-        }
-        assertFailsWith<IndexOutOfBoundsException> {
-            arr.listIterator(4)
-        }
+        assertFailsWith<IndexOutOfBoundsException> { arr.listIterator(-1) }
+        assertFailsWith<IndexOutOfBoundsException> { arr.listIterator(4) }
     }
 
     @Test
@@ -151,12 +140,8 @@ class ArrSpec {
     fun `arrMap empty access uses collection exception types`() {
         val empty = ArrMap.empty<String, Int>()
 
-        assertFailsWith<NoSuchElementException> {
-            empty.first()
-        }
-        assertFailsWith<NoSuchElementException> {
-            empty.last()
-        }
+        assertFailsWith<NoSuchElementException> { empty.first() }
+        assertFailsWith<NoSuchElementException> { empty.last() }
     }
 
     @Test

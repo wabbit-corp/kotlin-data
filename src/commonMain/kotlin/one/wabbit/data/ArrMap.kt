@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 @file:OptIn(InternalDataApi::class)
 
 package one.wabbit.data
@@ -33,7 +35,8 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Suppress("NOTHING_TO_INLINE", "UNCHECKED_CAST")
 @Serializable(with = ArrMap.TypeSerializer::class)
-class ArrMap<K : Any, V> private constructor(
+class ArrMap<K : Any, V>
+private constructor(
     unsafe: Array<Any?>,
     hashes: IntArray,
     @Suppress("UNUSED_PARAMETER") owned: UnsafeOwnership,
@@ -46,9 +49,7 @@ class ArrMap<K : Any, V> private constructor(
         require(unsafe.size / 2 == hashes.size) { "Expected hashes size to be half of unsafe size" }
     }
 
-    /**
-     * Number of key/value entries.
-     */
+    /** Number of key/value entries. */
     val size: Int
         get() = hashes.size
 
@@ -59,35 +60,25 @@ class ArrMap<K : Any, V> private constructor(
             Unit
         }
 
-    /**
-     * Return whether this map has no entries.
-     */
+    /** Return whether this map has no entries. */
     fun isEmpty(): Boolean = unsafe.isEmpty()
 
-    /**
-     * Return whether this map has at least one entry.
-     */
+    /** Return whether this map has at least one entry. */
     fun isNotEmpty(): Boolean = !unsafe.isEmpty()
 
-    /**
-     * Return the first entry in insertion order.
-     */
+    /** Return the first entry in insertion order. */
     fun first(): Pair<K, V> {
         requireEntry()
         return Pair(unsafe[0] as K, unsafe[1] as V)
     }
 
-    /**
-     * Return the last entry in insertion order.
-     */
+    /** Return the last entry in insertion order. */
     fun last(): Pair<K, V> {
         requireEntry()
         return Pair(unsafe[unsafe.size - 2] as K, unsafe[unsafe.size - 1] as V)
     }
 
-    /**
-     * Return the value for [key], or null when absent.
-     */
+    /** Return the value for [key], or null when absent. */
     operator fun get(key: K): V? {
         val unsafe = unsafe
         val hashes = hashes
@@ -113,9 +104,7 @@ class ArrMap<K : Any, V> private constructor(
         return null
     }
 
-    /**
-     * Return whether [key] is present.
-     */
+    /** Return whether [key] is present. */
     operator fun contains(key: K): Boolean {
         val unsafe = unsafe
         val size = unsafe.size / 2
@@ -130,9 +119,7 @@ class ArrMap<K : Any, V> private constructor(
         return false
     }
 
-    /**
-     * Return a map with [key] associated with [value].
-     */
+    /** Return a map with [key] associated with [value]. */
     fun put(key: K, value: V): ArrMap<K, V> {
         val unsafe = unsafe
         val size = hashes.size
@@ -162,9 +149,7 @@ class ArrMap<K : Any, V> private constructor(
         return unsafeWrapOwned(newArr, newHashes)
     }
 
-    /**
-     * Materialize this map as a mutable Kotlin map.
-     */
+    /** Materialize this map as a mutable Kotlin map. */
     fun toMutableMap(): MutableMap<K, V> {
         val unsafe = unsafe
         val size = unsafe.size
@@ -177,9 +162,7 @@ class ArrMap<K : Any, V> private constructor(
         return result
     }
 
-    /**
-     * Materialize entries in insertion order.
-     */
+    /** Materialize entries in insertion order. */
     fun toList(): List<Pair<K, V>> {
         val result = ArrayList<Pair<K, V>>(size)
         for (index in hashes.indices) {
@@ -188,14 +171,10 @@ class ArrMap<K : Any, V> private constructor(
         return result
     }
 
-    /**
-     * Materialize this map as a read-only Kotlin map.
-     */
+    /** Materialize this map as a read-only Kotlin map. */
     fun toMap(): Map<K, V> = toMutableMap()
 
-    /**
-     * Return a map without [key].
-     */
+    /** Return a map without [key]. */
     fun remove(key: K): ArrMap<K, V> {
         val unsafe = unsafe
         val hashes = hashes
@@ -224,14 +203,10 @@ class ArrMap<K : Any, V> private constructor(
         return this
     }
 
-    /**
-     * Return an empty map.
-     */
+    /** Return an empty map. */
     fun clear(): ArrMap<K, V> = empty()
 
-    /**
-     * Return keys in insertion order.
-     */
+    /** Return keys in insertion order. */
     fun keys(): Arr<K> {
         val result = arrayOfNulls<Any?>(size)
         for (index in hashes.indices) {
@@ -240,9 +215,7 @@ class ArrMap<K : Any, V> private constructor(
         return Arr.unsafeWrapOwned(result)
     }
 
-    /**
-     * Return values in insertion order.
-     */
+    /** Return values in insertion order. */
     fun values(): Arr<V> {
         val result = arrayOfNulls<Any?>(size)
         for (index in hashes.indices) {
@@ -251,9 +224,7 @@ class ArrMap<K : Any, V> private constructor(
         return Arr.unsafeWrapOwned(result)
     }
 
-    /**
-     * Return entries in insertion order.
-     */
+    /** Return entries in insertion order. */
     fun entries(): Arr<Pair<K, V>> {
         val result = arrayOfNulls<Any?>(size)
         for (index in hashes.indices) {
@@ -327,7 +298,8 @@ class ArrMap<K : Any, V> private constructor(
             if (thisSize != thatSize) return false
             val thisHash = _hashCode
             val otherHash = other._hashCode
-            if (thisHash != UNCACHED_HASH && otherHash != UNCACHED_HASH && thisHash != otherHash) return false
+            if (thisHash != UNCACHED_HASH && otherHash != UNCACHED_HASH && thisHash != otherHash)
+                return false
             // Intentionally scan: ArrMap is a tiny-map structure optimized for very small sizes.
             val thisUnsafe = unsafe
             val thatUnsafe = other.unsafe
@@ -359,9 +331,7 @@ class ArrMap<K : Any, V> private constructor(
         return false
     }
 
-    /**
-     * Serializer that encodes [ArrMap] as a Kotlin map.
-     */
+    /** Serializer that encodes [ArrMap] as a Kotlin map. */
     class TypeSerializer<K : Any, V>(
         val keySerializer: KSerializer<K>,
         val valueSerializer: KSerializer<V>,
@@ -377,32 +347,27 @@ class ArrMap<K : Any, V> private constructor(
             ArrMap.from<K, V>(mapSerializer.deserialize(decoder))
     }
 
-    /**
-     * Factories for [ArrMap].
-     */
+    /** Factories for [ArrMap]. */
     companion object {
         private object UnsafeOwnership
+
         private const val UNCACHED_HASH: Long = 0x100000000L
 
-        /**
-         * Suggested maximum size before a general-purpose hash map is usually a better fit.
-         */
+        /** Suggested maximum size before a general-purpose hash map is usually a better fit. */
         const val RECOMMENDED_MAX_SIZE: Int = 16
 
         @InternalDataApi
-        internal fun <K : Any, V> unsafeWrapOwned(unsafe: Array<Any?>, hashes: IntArray): ArrMap<K, V> =
-            ArrMap(unsafe, hashes, UnsafeOwnership)
+        internal fun <K : Any, V> unsafeWrapOwned(
+            unsafe: Array<Any?>,
+            hashes: IntArray,
+        ): ArrMap<K, V> = ArrMap(unsafe, hashes, UnsafeOwnership)
 
         private val EMPTY = unsafeWrapOwned<Nothing, Nothing>(emptyArray(), intArrayOf())
 
-        /**
-         * Return an empty map.
-         */
+        /** Return an empty map. */
         fun <K : Any, V> empty(): ArrMap<K, V> = EMPTY as ArrMap<K, V>
 
-        /**
-         * Build an [ArrMap] by copying [map] entries in iteration order.
-         */
+        /** Build an [ArrMap] by copying [map] entries in iteration order. */
         fun <K : Any, V> from(map: Map<K, V>): ArrMap<K, V> {
             val size = map.size
             if (size == 0) {
@@ -422,7 +387,5 @@ class ArrMap<K : Any, V> private constructor(
     }
 }
 
-/**
- * Return an empty [ArrMap].
- */
+/** Return an empty [ArrMap]. */
 fun <K : Any, V> arrMapOf(): ArrMap<K, V> = ArrMap.empty()

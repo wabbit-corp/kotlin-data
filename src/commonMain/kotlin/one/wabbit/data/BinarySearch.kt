@@ -1,10 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
-internal inline fun binarySearchIndex(
-    fromIndex: Int,
-    toIndex: Int,
-    compareAt: (Int) -> Int,
-): Int {
+internal inline fun binarySearchIndex(fromIndex: Int, toIndex: Int, compareAt: (Int) -> Int): Int {
     var low = fromIndex
     var high = toIndex - 1
 

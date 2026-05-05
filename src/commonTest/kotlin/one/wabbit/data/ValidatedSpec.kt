@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 package one.wabbit.data
 
 import kotlin.test.Test
@@ -13,12 +15,18 @@ class ValidatedSpec {
         assertEquals(1, success.getOrElse { 2 })
         assertEquals(2, failure.getOrElse { 2 })
 
-        assertEquals("ok:1/warn", success.fold({ "fail:${it.joinToString()}" }) { value, issues ->
-            "ok:$value/${issues.joinToString()}"
-        })
-        assertEquals("fail:boom", failure.fold({ "fail:${it.joinToString()}" }) { value, issues ->
-            "ok:$value/${issues.joinToString()}"
-        })
+        assertEquals(
+            "ok:1/warn",
+            success.fold({ "fail:${it.joinToString()}" }) { value, issues ->
+                "ok:$value/${issues.joinToString()}"
+            },
+        )
+        assertEquals(
+            "fail:boom",
+            failure.fold({ "fail:${it.joinToString()}" }) { value, issues ->
+                "ok:$value/${issues.joinToString()}"
+            },
+        )
     }
 
     @Test
@@ -37,8 +45,11 @@ class ValidatedSpec {
         )
         assertEquals(
             Validated.Fail(listOf("boom", "boom-2")),
-            (Validated.fail<String>(listOf("boom")) as Validated<String, Int>)
-                .zipWith(Validated.fail(listOf("boom-2")) as Validated<String, Int>) { a: Int, b: Int -> a + b },
+            (Validated.fail<String>(listOf("boom")) as Validated<String, Int>).zipWith(
+                Validated.fail(listOf("boom-2")) as Validated<String, Int>
+            ) { a: Int, b: Int ->
+                a + b
+            },
         )
     }
 

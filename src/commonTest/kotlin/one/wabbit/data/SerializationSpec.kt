@@ -2,6 +2,8 @@
 
 package one.wabbit.data
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlinx.serialization.builtins.BooleanArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.CharArraySerializer
@@ -12,8 +14,6 @@ import kotlinx.serialization.builtins.LongArraySerializer
 import kotlinx.serialization.builtins.ShortArraySerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.Json
-import kotlin.test.Test
-import kotlin.test.assertEquals
 
 class SerializationSpec {
     private val json = Json { encodeDefaults = true }
@@ -59,26 +59,77 @@ class SerializationSpec {
 
     @Test
     fun `primitive buffers and deques use primitive array serializers`() {
-        assertUsesPrimitiveArraySerializer(BooleanArraySerializer().descriptor, BooleanBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(ByteArraySerializer().descriptor, ByteBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(CharArraySerializer().descriptor, CharBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(DoubleArraySerializer().descriptor, DoubleBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(FloatArraySerializer().descriptor, FloatBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(IntArraySerializer().descriptor, IntBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(LongArraySerializer().descriptor, LongBuffer.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(ShortArraySerializer().descriptor, ShortBuffer.TypeSerializer().descriptor)
+        assertUsesPrimitiveArraySerializer(
+            BooleanArraySerializer().descriptor,
+            BooleanBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            ByteArraySerializer().descriptor,
+            ByteBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            CharArraySerializer().descriptor,
+            CharBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            DoubleArraySerializer().descriptor,
+            DoubleBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            FloatArraySerializer().descriptor,
+            FloatBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            IntArraySerializer().descriptor,
+            IntBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            LongArraySerializer().descriptor,
+            LongBuffer.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            ShortArraySerializer().descriptor,
+            ShortBuffer.TypeSerializer().descriptor,
+        )
 
-        assertUsesPrimitiveArraySerializer(BooleanArraySerializer().descriptor, BooleanDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(ByteArraySerializer().descriptor, ByteDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(CharArraySerializer().descriptor, CharDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(DoubleArraySerializer().descriptor, DoubleDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(FloatArraySerializer().descriptor, FloatDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(IntArraySerializer().descriptor, IntDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(LongArraySerializer().descriptor, LongDeque.TypeSerializer().descriptor)
-        assertUsesPrimitiveArraySerializer(ShortArraySerializer().descriptor, ShortDeque.TypeSerializer().descriptor)
+        assertUsesPrimitiveArraySerializer(
+            BooleanArraySerializer().descriptor,
+            BooleanDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            ByteArraySerializer().descriptor,
+            ByteDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            CharArraySerializer().descriptor,
+            CharDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            DoubleArraySerializer().descriptor,
+            DoubleDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            FloatArraySerializer().descriptor,
+            FloatDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            IntArraySerializer().descriptor,
+            IntDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            LongArraySerializer().descriptor,
+            LongDeque.TypeSerializer().descriptor,
+        )
+        assertUsesPrimitiveArraySerializer(
+            ShortArraySerializer().descriptor,
+            ShortDeque.TypeSerializer().descriptor,
+        )
     }
 
-    private fun assertUsesPrimitiveArraySerializer(expected: SerialDescriptor, actual: SerialDescriptor) {
+    private fun assertUsesPrimitiveArraySerializer(
+        expected: SerialDescriptor,
+        actual: SerialDescriptor,
+    ) {
         assertEquals(expected.serialName, actual.serialName)
     }
 }

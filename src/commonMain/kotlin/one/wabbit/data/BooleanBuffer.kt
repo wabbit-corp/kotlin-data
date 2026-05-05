@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
 import kotlin.jvm.JvmField
-
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.BooleanArraySerializer
@@ -16,8 +17,8 @@ import kotlinx.serialization.encoding.Encoder
  * operations update the receiver in place.
  *
  * Complexity notes:
- * - [size], [isEmpty], [isNotEmpty], [first], [last], [firstOrNull], [lastOrNull], [get], and
- *   [set] are O(1)
+ * - [size], [isEmpty], [isNotEmpty], [first], [last], [firstOrNull], [lastOrNull], [get], and [set]
+ *   are O(1)
  * - appends are amortized O(1)
  * - indexed insertions, removals, copies, sorting, and searches are O(n)
  *
@@ -146,9 +147,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Low-level Buffer Operations
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Ensure this buffer can store at least [requiredCapacity] elements without reallocating.
-     */
+    /** Ensure this buffer can store at least [requiredCapacity] elements without reallocating. */
     fun ensureCapacity(requiredCapacity: Int) {
         if (requiredCapacity > this.capacity) {
             val newCapacity = maxOf(this.capacity * 3 / 2, requiredCapacity)
@@ -159,9 +158,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Shrink internal capacity to the current [size].
-     */
+    /** Shrink internal capacity to the current [size]. */
     fun trimToSize() {
         if (usedSize < capacity) {
             buffer = buffer.copyOf(usedSize)
@@ -169,9 +166,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Remove all elements while retaining current capacity.
-     */
+    /** Remove all elements while retaining current capacity. */
     fun clear() {
         usedSize = 0
     }
@@ -180,34 +175,24 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Finite C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Number of elements currently stored.
-     */
+    /** Number of elements currently stored. */
     val size: Int
         get() = usedSize
 
-    /**
-     * Return whether this buffer contains no elements.
-     */
+    /** Return whether this buffer contains no elements. */
     fun isEmpty(): Boolean = usedSize == 0
 
-    /**
-     * Return whether this buffer contains at least one element.
-     */
+    /** Return whether this buffer contains at least one element. */
     fun isNotEmpty(): Boolean = usedSize != 0
 
-    /**
-     * Return whether [value] is present.
-     */
+    /** Return whether [value] is present. */
     fun contains(value: Boolean): Boolean = indexOf(value) != -1
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Replace every element with the result of [transform] and return this buffer.
-     */
+    /** Replace every element with the result of [transform] and return this buffer. */
     fun mapInPlace(transform: (Boolean) -> Boolean): BooleanBuffer {
         for (i in 0 until size) {
             buffer[i] = transform(buffer[i])
@@ -215,9 +200,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return this
     }
 
-    /**
-     * Remove elements rejected by [predicate] and return this buffer.
-     */
+    /** Remove elements rejected by [predicate] and return this buffer. */
     fun filterInPlace(predicate: (Boolean) -> Boolean): BooleanBuffer {
         var writeIndex = 0
         for (readIndex in 0 until size) {
@@ -233,9 +216,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Mutable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Remove elements accepted by [predicate] and return whether anything changed.
-     */
+    /** Remove elements accepted by [predicate] and return whether anything changed. */
     fun removeIf(predicate: (Boolean) -> Boolean): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
@@ -248,9 +229,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return hadChanges
     }
 
-    /**
-     * Remove every occurrence of [value] and return whether anything changed.
-     */
+    /** Remove every occurrence of [value] and return whether anything changed. */
     fun removeAll(value: Boolean): Boolean {
         var writeIndex = 0
         for (readIndex in 0 until usedSize) {
@@ -267,16 +246,12 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Run [action] for each element in index order.
-     */
+    /** Run [action] for each element in index order. */
     fun forEach(action: (Boolean) -> Unit) {
         for (i in 0 until size) action(buffer[i])
     }
 
-    /**
-     * Split elements into buffers that match and do not match [predicate].
-     */
+    /** Split elements into buffers that match and do not match [predicate]. */
     fun partition(predicate: (Boolean) -> Boolean): Pair<BooleanBuffer, BooleanBuffer> {
         val matching = BooleanBuffer()
         val nonMatching = BooleanBuffer()
@@ -292,6 +267,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     /**
      * Reduce this non-empty buffer from left to right.
+     *
      * @throws NoSuchElementException when this buffer is empty.
      */
     fun reduce(operation: (Boolean, Boolean) -> Boolean): Boolean {
@@ -303,9 +279,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    /**
-     * Return whether any element satisfies [predicate].
-     */
+    /** Return whether any element satisfies [predicate]. */
     fun any(predicate: (Boolean) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return true
@@ -313,9 +287,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return false
     }
 
-    /**
-     * Return whether all elements satisfy [predicate].
-     */
+    /** Return whether all elements satisfy [predicate]. */
     fun all(predicate: (Boolean) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (!predicate(buffer[i])) return false
@@ -323,9 +295,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return true
     }
 
-    /**
-     * Return whether no elements satisfy [predicate].
-     */
+    /** Return whether no elements satisfy [predicate]. */
     fun none(predicate: (Boolean) -> Boolean): Boolean {
         for (i in 0 until usedSize) {
             if (predicate(buffer[i])) return false
@@ -333,9 +303,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return true
     }
 
-    /**
-     * Count elements that satisfy [predicate].
-     */
+    /** Count elements that satisfy [predicate]. */
     fun count(predicate: (Boolean) -> Boolean): Int {
         var count = 0
         for (i in 0 until usedSize) {
@@ -344,15 +312,11 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return count
     }
 
-    /**
-     * Fold elements from left to right starting with [initial].
-     */
+    /** Fold elements from left to right starting with [initial]. */
     fun <State> fold(initial: State, operation: (State, Boolean) -> State): State =
         foldLeft(initial, operation)
 
-    /**
-     * Materialize this buffer as a mutable list.
-     */
+    /** Materialize this buffer as a mutable list. */
     fun toMutableList(): MutableList<Boolean> {
         val result = mutableListOf<Boolean>()
         for (i in 0 until usedSize) {
@@ -361,14 +325,10 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    /**
-     * Materialize this buffer as a read-only list.
-     */
+    /** Materialize this buffer as a read-only list. */
     fun toList(): List<Boolean> = toMutableList()
 
-    /**
-     * Materialize distinct elements as a mutable set.
-     */
+    /** Materialize distinct elements as a mutable set. */
     fun toMutableSet(): MutableSet<Boolean> {
         val result = mutableSetOf<Boolean>()
         for (i in 0 until usedSize) {
@@ -377,14 +337,10 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return result
     }
 
-    /**
-     * Copy the active contents into a primitive array.
-     */
+    /** Copy the active contents into a primitive array. */
     fun toBooleanArray(): BooleanArray = buffer.copyOfRange(0, size)
 
-    /**
-     * Return a mutable copy of this buffer.
-     */
+    /** Return a mutable copy of this buffer. */
     fun toBooleanBuffer(): BooleanBuffer {
         val copy = BooleanBuffer(usedSize)
         buffer.copyInto(copy.buffer, 0, 0, usedSize)
@@ -392,14 +348,10 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return copy
     }
 
-    /**
-     * Return a mutable copy of this buffer.
-     */
+    /** Return a mutable copy of this buffer. */
     fun copy(): BooleanBuffer = toBooleanBuffer()
 
-    /**
-     * Iterator over buffer contents in index order.
-     */
+    /** Iterator over buffer contents in index order. */
     class Iterator(private val buf: BooleanBuffer) : kotlin.collections.Iterator<Boolean> {
         private var index = 0
 
@@ -411,18 +363,14 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Return an iterator over buffer contents in index order.
-     */
+    /** Return an iterator over buffer contents in index order. */
     operator fun iterator(): Iterator = Iterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Mutable C + Iterable C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Mutable iterator that can remove the last returned element.
-     */
+    /** Mutable iterator that can remove the last returned element. */
     class MutableIterator(private val buf: BooleanBuffer) :
         kotlin.collections.MutableIterator<Boolean> {
         private var index = 0
@@ -444,18 +392,14 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Return a mutable iterator over this buffer.
-     */
+    /** Return a mutable iterator over this buffer. */
     fun mutableIterator(): MutableIterator = MutableIterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Iterable C + Eq T
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Return the first element accepted by [predicate], or null.
-     */
+    /** Return the first element accepted by [predicate], or null. */
     fun find(predicate: (Boolean) -> Boolean): Boolean? {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return buffer[i]
@@ -463,9 +407,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return null
     }
 
-    /**
-     * Return a new buffer containing the first occurrence of each distinct element.
-     */
+    /** Return a new buffer containing the first occurrence of each distinct element. */
     fun distinct(): BooleanBuffer {
         val seen = mutableSetOf<Boolean>()
         val result = BooleanBuffer()
@@ -481,23 +423,17 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Return the element at [index]. Negative indices address from the end.
-     */
+    /** Return the element at [index]. Negative indices address from the end. */
     operator fun get(index: Int): Boolean = buffer[normalizeAccessIndex(index)]
 
-    /**
-     * Return the element at [index], or null when out of bounds.
-     */
+    /** Return the element at [index], or null when out of bounds. */
     fun getOrNull(index: Int): Boolean? {
         // Handle negative indices without throwing.
         val idx = if (index < 0) usedSize + index else index
         return if (idx in 0 until usedSize) buffer[idx] else null
     }
 
-    /**
-     * Return the element at [index], or [defaultValue] when out of bounds.
-     */
+    /** Return the element at [index], or [defaultValue] when out of bounds. */
     inline fun getOrElse(index: Int, defaultValue: () -> Boolean): Boolean {
         val value = getOrNull(index)
         return value ?: defaultValue()
@@ -505,36 +441,30 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     /**
      * Return the first element.
+     *
      * @throws NoSuchElementException when this buffer is empty.
      */
     fun first(): Boolean =
         if (usedSize > 0) buffer[0] else throw NoSuchElementException("Buffer is empty")
 
-    /**
-     * Return the first element, or null when empty.
-     */
+    /** Return the first element, or null when empty. */
     fun firstOrNull(): Boolean? = if (usedSize > 0) buffer[0] else null
 
     /**
      * Return the last element.
+     *
      * @throws NoSuchElementException when this buffer is empty.
      */
     fun last(): Boolean =
         if (usedSize > 0) buffer[usedSize - 1] else throw NoSuchElementException("Buffer is empty")
 
-    /**
-     * Return the last element, or null when empty.
-     */
+    /** Return the last element, or null when empty. */
     fun lastOrNull(): Boolean? = if (usedSize > 0) buffer[usedSize - 1] else null
 
-    /**
-     * Return the first element accepted by [predicate], or null.
-     */
+    /** Return the first element accepted by [predicate], or null. */
     fun findFirst(predicate: (Boolean) -> Boolean): Boolean? = find(predicate)
 
-    /**
-     * Return the last element accepted by [predicate], or null.
-     */
+    /** Return the last element accepted by [predicate], or null. */
     fun findLast(predicate: (Boolean) -> Boolean): Boolean? {
         for (i in size - 1 downTo 0) {
             if (predicate(buffer[i])) return buffer[i]
@@ -542,9 +472,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return null
     }
 
-    /**
-     * Return the first index of [value], or `-1` when absent.
-     */
+    /** Return the first index of [value], or `-1` when absent. */
     fun indexOf(value: Boolean): Int {
         for (i in 0 until size) {
             if (sameValue(buffer[i], value)) return i
@@ -552,9 +480,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
-    /**
-     * Return the last index of [value], or `-1` when absent.
-     */
+    /** Return the last index of [value], or `-1` when absent. */
     fun indexOfLast(value: Boolean): Int {
         for (i in size - 1 downTo 0) {
             if (sameValue(buffer[i], value)) return i
@@ -562,9 +488,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
-    /**
-     * Return the first index accepted by [predicate], or `-1`.
-     */
+    /** Return the first index accepted by [predicate], or `-1`. */
     fun indexWhere(predicate: (Boolean) -> Boolean): Int {
         for (i in 0 until size) {
             if (predicate(buffer[i])) return i
@@ -572,9 +496,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
-    /**
-     * Return the first index accepted by [predicate], or `-1`.
-     */
+    /** Return the first index accepted by [predicate], or `-1`. */
     fun indexOfFirst(predicate: (Boolean) -> Boolean): Int = indexWhere(predicate)
 
     fun indexOfLast(predicate: (Boolean) -> Boolean): Int {
@@ -584,9 +506,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return -1
     }
 
-    /**
-     * Return all indices accepted by [predicate].
-     */
+    /** Return all indices accepted by [predicate]. */
     fun indicesWhere(predicate: (Boolean) -> Boolean): IntBuffer {
         val indices = IntBuffer()
         for (i in 0 until usedSize) {
@@ -595,16 +515,12 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return indices
     }
 
-    /**
-     * Run [action] with each index and value.
-     */
+    /** Run [action] with each index and value. */
     fun forEachIndexed(action: (index: Int, value: Boolean) -> Unit) {
         for (i in 0 until size) action(i, buffer[i])
     }
 
-    /**
-     * Fold elements from left to right starting with [initial].
-     */
+    /** Fold elements from left to right starting with [initial]. */
     fun <State> foldLeft(initial: State, operation: (State, Boolean) -> State): State {
         var accumulator = initial
         for (i in 0 until usedSize) {
@@ -613,9 +529,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return accumulator
     }
 
-    /**
-     * Fold elements from right to left starting with [initial].
-     */
+    /** Fold elements from right to left starting with [initial]. */
     fun <State> foldRight(initial: State, operation: (Boolean, State) -> State): State {
         var accumulator = initial
         for (i in usedSize - 1 downTo 0) {
@@ -628,16 +542,12 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     // Indexable C + Mutable C
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Replace the element at [index]. Negative indices address from the end.
-     */
+    /** Replace the element at [index]. Negative indices address from the end. */
     operator fun set(index: Int, value: Boolean) {
         buffer[normalizeAccessIndex(index)] = value
     }
 
-    /**
-     * Fill the normalized range `[fromIndex, toIndex)` with [value].
-     */
+    /** Fill the normalized range `[fromIndex, toIndex)` with [value]. */
     fun fill(value: Boolean, fromIndex: Int = 0, toIndex: Int = usedSize) {
         val (start, end) = normalizeRange(fromIndex, toIndex)
         for (i in start until end) {
@@ -645,9 +555,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Fill [range] with [value] after normalizing slice bounds.
-     */
+    /** Fill [range] with [value] after normalizing slice bounds. */
     operator fun set(range: IntRange, value: Boolean) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         for (i in start until end) {
@@ -655,9 +563,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Replace [range] with [values]. The normalized range length must match [values].
-     */
+    /** Replace [range] with [values]. The normalized range length must match [values]. */
     operator fun set(range: IntRange, values: BooleanArray) {
         val (start, end) = normalizeRange(range.first, range.last + 1)
         val rangeSize = end - start
@@ -667,9 +573,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         values.copyInto(buffer, start, 0, rangeSize)
     }
 
-    /**
-     * Replace a range starting at [fromIndex] with values from [values].
-     */
+    /** Replace a range starting at [fromIndex] with values from [values]. */
     fun setRange(
         fromIndex: Int,
         values: BooleanArray,
@@ -690,9 +594,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         values.copyInto(buffer, idx, startIndex, endIndex)
     }
 
-    /**
-     * Reverse this buffer in place.
-     */
+    /** Reverse this buffer in place. */
     fun reverse() {
         var left = 0
         var right = size - 1
@@ -705,9 +607,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Shuffle this buffer in place using [random].
-     */
+    /** Shuffle this buffer in place using [random]. */
     fun shuffle(random: kotlin.random.Random) {
         for (i in size - 1 downTo 1) {
             val j = random.nextInt(i + 1)
@@ -717,9 +617,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         }
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
+    /** Insert value(s) at [index], shifting existing elements to the right. */
     fun insertAt(index: Int, value: Boolean) {
         val idx = normalizeInsertIndex(index)
         ensureCapacity(usedSize + 1)
@@ -730,18 +628,19 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize++
     }
 
-    /**
-     * Append [value] to the end of this buffer.
-     */
+    /** Append [value] to the end of this buffer. */
     fun add(value: Boolean) {
         ensureCapacity(usedSize + 1)
         buffer[usedSize++] = value
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
-    fun insertAt(index: Int, values: BooleanArray, startIndex: Int = 0, endIndex: Int = values.size) {
+    /** Insert value(s) at [index], shifting existing elements to the right. */
+    fun insertAt(
+        index: Int,
+        values: BooleanArray,
+        startIndex: Int = 0,
+        endIndex: Int = values.size,
+    ) {
         val idx = normalizeInsertIndex(index)
         requireSliceIndexRange(startIndex, endIndex, values.size)
         val addSize = endIndex - startIndex
@@ -753,9 +652,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
+    /** Insert value(s) at [index], shifting existing elements to the right. */
     fun insertAt(
         index: Int,
         values: List<Boolean>,
@@ -775,9 +672,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
+    /** Insert value(s) at [index], shifting existing elements to the right. */
     fun insertAt(index: Int, values: Collection<Boolean>) {
         var idx = normalizeInsertIndex(index)
         val addSize = values.size
@@ -791,24 +686,18 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         usedSize += addSize
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
+    /** Insert value(s) at [index], shifting existing elements to the right. */
     fun insertAt(index: Int, value: BooleanBuffer) {
         insertAt(index, value.buffer, 0, value.usedSize)
     }
 
-    /**
-     * Insert value(s) at [index], shifting existing elements to the right.
-     */
+    /** Insert value(s) at [index], shifting existing elements to the right. */
     fun insertAt(index: Int, values: BooleanDeque) {
         // Assuming BooleanDeque has a toBooleanArray() method.
         insertAt(index, values.toBooleanArray())
     }
 
-    /**
-     * Remove and return the element at [index]. Negative indices address from the end.
-     */
+    /** Remove and return the element at [index]. Negative indices address from the end. */
     fun removeAt(index: Int): Boolean {
         val idx = normalizeAccessIndex(index)
         val value = buffer[idx]
@@ -821,6 +710,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     /**
      * Remove and return the first element.
+     *
      * @throws NoSuchElementException when this buffer is empty.
      */
     fun removeFirst(): Boolean {
@@ -830,6 +720,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
 
     /**
      * Remove and return the last element.
+     *
      * @throws NoSuchElementException when this buffer is empty.
      */
     fun removeLast(): Boolean {
@@ -837,9 +728,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         return removeAt(usedSize - 1)
     }
 
-    /**
-     * Bidirectional iterator over buffer contents.
-     */
+    /** Bidirectional iterator over buffer contents. */
     class ListIterator(private val buf: BooleanBuffer) : kotlin.collections.ListIterator<Boolean> {
         private var index = 0
 
@@ -862,32 +751,22 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
         override fun previousIndex(): Int = index - 1
     }
 
-    /**
-     * Return a bidirectional iterator over this buffer.
-     */
+    /** Return a bidirectional iterator over this buffer. */
     fun listIterator(): ListIterator = ListIterator(this)
 
     // /////////////////////////////////////////////////////////////////////////
     // Companion Object
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Factories for primitive buffers.
-     */
+    /** Factories for primitive buffers. */
     companion object {
-        /**
-         * Return an empty buffer.
-         */
+        /** Return an empty buffer. */
         fun empty(): BooleanBuffer = BooleanBuffer()
 
-        /**
-         * Return an empty buffer with [capacity].
-         */
+        /** Return an empty buffer with [capacity]. */
         fun withCapacity(capacity: Int): BooleanBuffer = BooleanBuffer(capacity)
 
-        /**
-         * Build a buffer of [size] values by calling [init] for each index.
-         */
+        /** Build a buffer of [size] values by calling [init] for each index. */
         fun generate(size: Int, init: (Int) -> Boolean): BooleanBuffer {
             val buffer = BooleanBuffer(size)
             for (i in 0 until size) {
@@ -896,9 +775,7 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
             return buffer
         }
 
-        /**
-         * Concatenate [buffers] into a new buffer.
-         */
+        /** Concatenate [buffers] into a new buffer. */
         fun concat(vararg buffers: BooleanBuffer): BooleanBuffer {
             // Pre-calculate the total number of elements
             val totalSize = buffers.sumOf { it.size }
@@ -920,33 +797,23 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
             return result
         }
 
-        /**
-         * Copy [values] into a new buffer.
-         */
+        /** Copy [values] into a new buffer. */
         fun from(values: Collection<Boolean>): BooleanBuffer {
             val buffer = BooleanBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
             return buffer
         }
 
-        /**
-         * Copy [values] into a new buffer.
-         */
+        /** Copy [values] into a new buffer. */
         fun from(values: BooleanArray): BooleanBuffer = BooleanBuffer(values)
 
-        /**
-         * Copy [values] into a new buffer.
-         */
+        /** Copy [values] into a new buffer. */
         fun from(values: BooleanBuffer): BooleanBuffer = values.copy()
 
-        /**
-         * Copy [values] into a new buffer.
-         */
+        /** Copy [values] into a new buffer. */
         fun from(values: BooleanDeque): BooleanBuffer = BooleanBuffer(values.toBooleanArray())
 
-        /**
-         * Build a buffer containing [values].
-         */
+        /** Build a buffer containing [values]. */
         fun of(vararg values: Boolean): BooleanBuffer {
             val buffer = BooleanBuffer(values.size)
             values.forEach { buffer.buffer[buffer.usedSize++] = it }
@@ -955,7 +822,5 @@ class BooleanBuffer(@JvmField internal var capacity: Int = 16) {
     }
 }
 
-/**
- * Build a [BooleanBuffer] containing [values].
- */
+/** Build a [BooleanBuffer] containing [values]. */
 fun booleanBufferOf(vararg values: Boolean): BooleanBuffer = BooleanBuffer.of(*values)

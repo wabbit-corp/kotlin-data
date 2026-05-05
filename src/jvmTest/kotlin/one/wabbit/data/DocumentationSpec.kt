@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 package one.wabbit.data
 
 import java.nio.file.Path
@@ -10,7 +12,11 @@ class DocumentationSpec {
     fun `arr complexity docs describe first and last access as constant time`() {
         val source = sourceOf("Arr.kt")
 
-        assertContains(source, "* - indexed reads, [first], [last], [firstOrNull], and [lastOrNull] are O(1)", false)
+        assertContains(
+            source,
+            "* - indexed reads, [first], [last], [firstOrNull], and [lastOrNull] are O(1)",
+            false,
+        )
         assertContains(source, "* - [contains], [indexOf], and [lastIndexOf] are O(n)", false)
     }
 
@@ -29,13 +35,14 @@ class DocumentationSpec {
 
     private fun sourceOf(fileName: String): String =
         Path.of(
-            System.getProperty("user.dir"),
-            "src",
-            "commonMain",
-            "kotlin",
-            "one",
-            "wabbit",
-            "data",
-            fileName,
-        ).readText()
+                System.getProperty("user.dir"),
+                "src",
+                "commonMain",
+                "kotlin",
+                "one",
+                "wabbit",
+                "data",
+                fileName,
+            )
+            .readText()
 }

@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 package one.wabbit.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -73,8 +75,6 @@ class ConcurrentHashMapSpec {
 
     @Test
     fun `negative initial capacity matches jvm contract`() {
-        assertFailsWith<IllegalArgumentException> {
-            ConcurrentHashMap<String, Int>(-1)
-        }
+        assertFailsWith<IllegalArgumentException> { ConcurrentHashMap<String, Int>(-1) }
     }
 }

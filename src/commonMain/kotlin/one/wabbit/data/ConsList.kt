@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -13,14 +16,10 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Serializable(with = ConsList.TypeSerializer::class)
 sealed class ConsList<out V> : List<V> {
-    /**
-     * Number of elements in this list.
-     */
+    /** Number of elements in this list. */
     abstract override val size: Int
 
-    /**
-     * Catamorphism over the empty and non-empty cases.
-     */
+    /** Catamorphism over the empty and non-empty cases. */
     abstract fun <Z> cata(nil: Z, cons: (V, Z) -> Z): Z
 
     private fun requirePosition(index: Int): Int {
@@ -41,29 +40,21 @@ sealed class ConsList<out V> : List<V> {
 
     private fun dropElements(count: Int): ConsList<V> {
         var current: ConsList<V> = this
-        repeat(count) {
-            current = (current as Cons).tail
-        }
+        repeat(count) { current = (current as Cons).tail }
         return current
     }
 
-    /**
-     * Return a new list with [value] prepended.
-     */
+    /** Return a new list with [value] prepended. */
     fun cons(value: @UnsafeVariance V): Cons<V> = Cons(value, this)
 
-    /**
-     * Return the first element, or throw [NoSuchElementException] when empty.
-     */
+    /** Return the first element, or throw [NoSuchElementException] when empty. */
     fun head(): V =
         when (this) {
             is Nil -> throw NoSuchElementException("head of empty list")
             is Cons -> head
         }
 
-    /**
-     * Return the first element, or null when empty.
-     */
+    /** Return the first element, or null when empty. */
     fun headOrNull(): V? =
         when (this) {
             is Nil -> null
@@ -74,9 +65,7 @@ sealed class ConsList<out V> : List<V> {
     // Conversion
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Materialize this list into a typed array.
-     */
+    /** Materialize this list into a typed array. */
     fun toTypedArray(): Array<@UnsafeVariance V> {
         val size = size
 
@@ -90,9 +79,7 @@ sealed class ConsList<out V> : List<V> {
         return array
     }
 
-    /**
-     * Materialize this list into a Kotlin [List].
-     */
+    /** Materialize this list into a Kotlin [List]. */
     fun toList(): List<V> {
         val list = ArrayList<V>(size)
         var tail = this
@@ -103,18 +90,14 @@ sealed class ConsList<out V> : List<V> {
         return list
     }
 
-    /**
-     * Convert this strict list to a [LazyList].
-     */
+    /** Convert this strict list to a [LazyList]. */
     fun toLazy(): LazyList<V> =
         when (this) {
             is Nil -> LazyList.Nil
             is Cons -> LazyList.Delay(Need.apply { LazyList.Cons(head, tail.toLazy()) })
         }
 
-    /**
-     * Return this list in reverse order.
-     */
+    /** Return this list in reverse order. */
     fun reverse(): ConsList<V> {
         var tail = this
         var result: ConsList<V> = Nil
@@ -125,9 +108,7 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    /**
-     * Return this list in reverse order as a [LazyList].
-     */
+    /** Return this list in reverse order as a [LazyList]. */
     fun reverseLazy(): LazyList<V> {
         // rev' :: StrictList a -> [a]
         // rev' = go []
@@ -149,9 +130,7 @@ sealed class ConsList<out V> : List<V> {
     // Folds
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Fold elements from left to right.
-     */
+    /** Fold elements from left to right. */
     fun <Z> foldLeft(z: Z, s: (Z, V) -> Z): Z {
         var tail = this
         var result = z
@@ -162,9 +141,7 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    /**
-     * Fold elements from right to left.
-     */
+    /** Fold elements from right to left. */
     fun <Z> foldRight(z: Z, s: (V, Z) -> Z): Z {
         val arr = this.toTypedArray()
         var result = z
@@ -174,9 +151,7 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    /**
-     * Lazily fold elements from right to left.
-     */
+    /** Lazily fold elements from right to left. */
     fun <Z> foldRightLazy(z: Need<Z>, s: (V, Need<Z>) -> Need<Z>): Need<Z> =
         when (this) {
             is Nil -> z
@@ -187,9 +162,7 @@ sealed class ConsList<out V> : List<V> {
     // Operators
     // /////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Return elements accepted by [f].
-     */
+    /** Return elements accepted by [f]. */
     fun filter(f: (V) -> Boolean): ConsList<V> {
         var tail = this
         var result: ConsList<V> = Nil
@@ -202,9 +175,7 @@ sealed class ConsList<out V> : List<V> {
         return result.reverse()
     }
 
-    /**
-     * Return whether at least one element satisfies [f].
-     */
+    /** Return whether at least one element satisfies [f]. */
     inline fun any(f: (V) -> Boolean): Boolean {
         var tail = this
         while (tail is Cons) {
@@ -216,9 +187,7 @@ sealed class ConsList<out V> : List<V> {
         return false
     }
 
-    /**
-     * Concatenate this list with [other].
-     */
+    /** Concatenate this list with [other]. */
     operator fun plus(other: ConsList<@UnsafeVariance V>): ConsList<V> =
         this.foldRight(other) { v, acc -> acc.cons(v) }
 
@@ -238,9 +207,7 @@ sealed class ConsList<out V> : List<V> {
         }
     }
 
-    /**
-     * Return a copy with [element] stored at [index].
-     */
+    /** Return a copy with [element] stored at [index]. */
     fun update(index: Int, element: @UnsafeVariance V): ConsList<V> {
         if (index < 0) throw IndexOutOfBoundsException("index: $index")
         if (index >= size) throw IndexOutOfBoundsException("index: $index, size: $size")
@@ -409,9 +376,7 @@ sealed class ConsList<out V> : List<V> {
         return result
     }
 
-    /**
-     * Empty strict list.
-     */
+    /** Empty strict list. */
     object Nil : ConsList<Nothing>() {
         override val size = 0
 
@@ -420,9 +385,7 @@ sealed class ConsList<out V> : List<V> {
         override fun toString(): String = "ConsList()"
     }
 
-    /**
-     * Non-empty strict list node with [head] and [tail].
-     */
+    /** Non-empty strict list node with [head] and [tail]. */
     data class Cons<out A>(val head: A, val tail: ConsList<A>) : ConsList<A>() {
         override val size: Int = tail.size + 1
 
@@ -449,9 +412,7 @@ sealed class ConsList<out V> : List<V> {
         }
     }
 
-    /**
-     * Serializer that encodes strict lists as Kotlin lists.
-     */
+    /** Serializer that encodes strict lists as Kotlin lists. */
     class TypeSerializer<A>(val valueSerializer: KSerializer<A>) : KSerializer<ConsList<A>> {
         override val descriptor = ListSerializer(valueSerializer).descriptor
 
@@ -464,19 +425,13 @@ sealed class ConsList<out V> : List<V> {
     }
 }
 
-/**
- * Return an empty [ConsList].
- */
+/** Return an empty [ConsList]. */
 fun <V> emptyConsList(): ConsList<V> = ConsList.Nil
 
-/**
- * Return an empty [ConsList].
- */
+/** Return an empty [ConsList]. */
 fun <V> consListOf(): ConsList<V> = ConsList.Nil
 
-/**
- * Build a [ConsList] containing [list] in argument order.
- */
+/** Build a [ConsList] containing [list] in argument order. */
 fun <V> consListOf(vararg list: V): ConsList<V> {
     var result: ConsList<V> = ConsList.Nil
     for (i in list.size - 1 downTo 0) {
@@ -485,9 +440,7 @@ fun <V> consListOf(vararg list: V): ConsList<V> {
     return result
 }
 
-/**
- * Build a [ConsList] by copying [list] in iteration order.
- */
+/** Build a [ConsList] by copying [list] in iteration order. */
 fun <V> consListFrom(list: List<V>): ConsList<V> {
     var result: ConsList<V> = ConsList.Nil
     for (i in list.size - 1 downTo 0) {

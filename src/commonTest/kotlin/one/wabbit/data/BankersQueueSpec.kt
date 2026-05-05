@@ -10,19 +10,14 @@ import kotlin.test.assertTrue
 class BankersQueueSpec {
     @Test
     fun `snocReversed counts all appended elements`() {
-        val queue = BankersQueue
-            .fromConsList(consListOf(1, 2))
-            .snocReversed(consListOf(4, 3))
+        val queue = BankersQueue.fromConsList(consListOf(1, 2)).snocReversed(consListOf(4, 3))
 
         assertEquals(listOf(1, 2, 3, 4), queue.toList())
     }
 
     @Test
     fun `queue aliases read like queue operations`() {
-        val queue = BankersQueue
-            .empty<Int>()
-            .enqueue(1)
-            .enqueue(2)
+        val queue = BankersQueue.empty<Int>().enqueue(1).enqueue(2)
 
         assertEquals(2, queue.size)
         assertEquals(queue.size, queue.frontSize + queue.backSize)
@@ -50,9 +45,7 @@ class BankersQueueSpec {
         val empty = BankersQueue.empty<Int>()
 
         assertEquals(null, empty.peekOrNull())
-        assertFailsWith<NoSuchElementException> {
-            empty.peek()
-        }
+        assertFailsWith<NoSuchElementException> { empty.peek() }
     }
 
     @Test

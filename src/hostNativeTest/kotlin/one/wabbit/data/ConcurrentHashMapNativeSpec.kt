@@ -1,4 +1,9 @@
-@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class, kotlinx.cinterop.ExperimentalForeignApi::class)
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
+@file:OptIn(
+    kotlin.concurrent.atomics.ExperimentalAtomicApi::class,
+    kotlinx.cinterop.ExperimentalForeignApi::class,
+)
 
 package one.wabbit.data
 
@@ -35,20 +40,19 @@ private fun concurrentHashMapTestThreadEntry(arg: COpaquePointer?): COpaquePoint
     return null
 }
 
-private fun startNativeThread(block: () -> Unit): pthread_t =
-    memScoped {
-        val thread = alloc<__darwin_pthread_tVar>()
-        val stableBlock = StableRef.create(block)
-        val result =
-            pthread_create(
-                thread.ptr,
-                null,
-                staticCFunction(::concurrentHashMapTestThreadEntry),
-                stableBlock.asCPointer(),
-            )
-        check(result == 0) { "pthread_create failed: $result" }
-        checkNotNull(thread.value)
-    }
+private fun startNativeThread(block: () -> Unit): pthread_t = memScoped {
+    val thread = alloc<__darwin_pthread_tVar>()
+    val stableBlock = StableRef.create(block)
+    val result =
+        pthread_create(
+            thread.ptr,
+            null,
+            staticCFunction(::concurrentHashMapTestThreadEntry),
+            stableBlock.asCPointer(),
+        )
+    check(result == 0) { "pthread_create failed: $result" }
+    checkNotNull(thread.value)
+}
 
 private fun joinNativeThread(thread: pthread_t) {
     val result = pthread_join(thread, null)
@@ -76,7 +80,7 @@ class ConcurrentHashMapNativeSpec {
                 ConcurrentHashMapNativeHooks(
                     afterResizePublishesTable = { oldBucketCount, newBucketCount ->
                         resizeEvents += oldBucketCount to newBucketCount
-                    },
+                    }
                 ),
             )
 
@@ -84,7 +88,10 @@ class ConcurrentHashMapNativeSpec {
             assertEquals(null, map.put("key-$index", index))
         }
 
-        assertTrue(resizeEvents.isNotEmpty(), "expected native map growth to trigger at least one resize")
+        assertTrue(
+            resizeEvents.isNotEmpty(),
+            "expected native map growth to trigger at least one resize",
+        )
         assertEquals(40, map.size)
         for (index in 0 until 40) {
             assertEquals(index, map["key-$index"])
@@ -124,7 +131,10 @@ class ConcurrentHashMapNativeSpec {
 
         try {
             clearThread = startNativeThread { map.clear() }
-            assertTrue(waitUntil(2.seconds) { clearPaused.load() == 1 }, "clear never reached its critical section")
+            assertTrue(
+                waitUntil(2.seconds) { clearPaused.load() == 1 },
+                "clear never reached its critical section",
+            )
 
             putThread = startNativeThread {
                 putStarted.store(1)

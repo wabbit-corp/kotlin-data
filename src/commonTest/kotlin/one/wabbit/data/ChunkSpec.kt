@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 @file:OptIn(InternalDataApi::class)
 
 package one.wabbit.data
@@ -22,7 +24,10 @@ class ChunkSpec {
     @Test
     fun `primitive and string factories work`() {
         assertEquals(listOf<Byte>(1, 2, 3), Chunk.fromByteArray(byteArrayOf(1, 2, 3)).toList())
-        assertEquals(listOf(true, false), Chunk.fromBooleanArray(booleanArrayOf(true, false)).toList())
+        assertEquals(
+            listOf(true, false),
+            Chunk.fromBooleanArray(booleanArrayOf(true, false)).toList(),
+        )
         assertEquals("abc", Chunk.fromString("abc").toStringChunk())
     }
 
@@ -68,9 +73,7 @@ class ChunkSpec {
 
     @Test
     fun `update overlays values without materializing immediately`() {
-        val updated = chunkOf(1, 2, 3, 4)
-            .update(1, 20)
-            .update(3, 40)
+        val updated = chunkOf(1, 2, 3, 4).update(1, 20).update(3, 40)
 
         assertEquals(listOf(1, 20, 3, 40), updated.toList())
         assertEquals(20, updated[1])
@@ -104,9 +107,7 @@ class ChunkSpec {
     fun `prepend chunk rejects negative indices instead of reading from buffer slots`() {
         val prepended = chunkOf<String?>("tail").prepend(null).prepend("head")
 
-        assertFailsWith<IndexOutOfBoundsException> {
-            prepended[-1]
-        }
+        assertFailsWith<IndexOutOfBoundsException> { prepended[-1] }
     }
 
     @Test
@@ -169,14 +170,8 @@ class ChunkSpec {
 
     @Test
     fun `indexWhere handles concat heavy chunks from an offset`() {
-        val chunk = Chunk.Concat(
-            arrayOf(
-                chunkOf(10, 20),
-                chunkOf(30),
-                chunkOf(40, 50),
-                chunkOf(60),
-            ),
-        )
+        val chunk =
+            Chunk.Concat(arrayOf(chunkOf(10, 20), chunkOf(30), chunkOf(40, 50), chunkOf(60)))
 
         assertEquals(2, chunk.indexWhere({ it == 30 }))
         assertEquals(4, chunk.indexWhere({ it == 50 }, from = 3))
@@ -185,14 +180,7 @@ class ChunkSpec {
 
     @Test
     fun `foldRight preserves order across concat heavy chunks`() {
-        val chunk = Chunk.Concat(
-            arrayOf(
-                chunkOf(1, 2),
-                chunkOf(3),
-                chunkOf(4, 5),
-                chunkOf(6),
-            ),
-        )
+        val chunk = Chunk.Concat(arrayOf(chunkOf(1, 2), chunkOf(3), chunkOf(4, 5), chunkOf(6)))
 
         assertEquals("123456", chunk.foldRight("") { value, acc -> value.toString() + acc })
     }
@@ -200,12 +188,13 @@ class ChunkSpec {
     @Test
     fun `rebalance builds a balanced concat tree instead of a flat wide node`() {
         val leaves = (0 until 8).map { chunkOf(it) }
-        val nested = Chunk.Concat(
-            arrayOf(
-                Chunk.Concat(arrayOf(leaves[0], leaves[1], leaves[2], leaves[3])),
-                Chunk.Concat(arrayOf(leaves[4], leaves[5], leaves[6], leaves[7])),
-            ),
-        )
+        val nested =
+            Chunk.Concat(
+                arrayOf(
+                    Chunk.Concat(arrayOf(leaves[0], leaves[1], leaves[2], leaves[3])),
+                    Chunk.Concat(arrayOf(leaves[4], leaves[5], leaves[6], leaves[7])),
+                )
+            )
 
         val rebalanced = nested.rebalance()
 

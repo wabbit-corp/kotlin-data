@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
-/**
- * Return an empty iterator.
- */
+/** Return an empty iterator. */
 fun iteratorOf(): Iterator<Nothing> =
     object : Iterator<Nothing> {
         override fun hasNext(): Boolean = false
@@ -10,9 +10,7 @@ fun iteratorOf(): Iterator<Nothing> =
         override fun next(): Nothing = throw NoSuchElementException()
     }
 
-/**
- * Return an iterator over one value.
- */
+/** Return an iterator over one value. */
 fun <V> iteratorOf(v: V): Iterator<V> {
     return object : Iterator<V> {
         var done = false
@@ -27,9 +25,7 @@ fun <V> iteratorOf(v: V): Iterator<V> {
     }
 }
 
-/**
- * Return an iterator over two values in argument order.
- */
+/** Return an iterator over two values in argument order. */
 fun <V> iteratorOf(v1: V, v2: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
@@ -47,9 +43,7 @@ fun <V> iteratorOf(v1: V, v2: V): Iterator<V> {
     }
 }
 
-/**
- * Return an iterator over three values in argument order.
- */
+/** Return an iterator over three values in argument order. */
 fun <V> iteratorOf(v1: V, v2: V, v3: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
@@ -68,9 +62,7 @@ fun <V> iteratorOf(v1: V, v2: V, v3: V): Iterator<V> {
     }
 }
 
-/**
- * Return an iterator over four values in argument order.
- */
+/** Return an iterator over four values in argument order. */
 fun <V> iteratorOf(v1: V, v2: V, v3: V, v4: V): Iterator<V> {
     return object : Iterator<V> {
         var index = 0
@@ -90,9 +82,7 @@ fun <V> iteratorOf(v1: V, v2: V, v3: V, v4: V): Iterator<V> {
     }
 }
 
-/**
- * Return a lazy iterator that yields only values accepted by [f].
- */
+/** Return a lazy iterator that yields only values accepted by [f]. */
 fun <A> Iterator<A>.filter(f: (A) -> Boolean): Iterator<A> {
     val self = this
     return object : Iterator<A> {
@@ -134,7 +124,8 @@ fun <A> Iterator<A>.filter(f: (A) -> Boolean): Iterator<A> {
 /**
  * Return a lazy iterator that transforms values with [f].
  *
- * If [f] throws a non-fatal exception, the source value is retried on the next [Iterator.next] call.
+ * If [f] throws a non-fatal exception, the source value is retried on the next [Iterator.next]
+ * call.
  */
 fun <T, U> Iterator<T>.map(f: (T) -> U): Iterator<U> {
     val self = this
@@ -171,7 +162,8 @@ fun <T, U> Iterator<T>.map(f: (T) -> U): Iterator<U> {
 /**
  * Return a lazy iterator that expands each source value into an iterator from [f].
  *
- * If [f] throws a non-fatal exception, the source value is retried on the next [Iterator.next] call.
+ * If [f] throws a non-fatal exception, the source value is retried on the next [Iterator.next]
+ * call.
  */
 fun <T, U> Iterator<T>.flatMap(f: (T) -> Iterator<U>): Iterator<U> {
     val upstream = this
@@ -233,9 +225,7 @@ fun <T, U> Iterator<T>.flatMap(f: (T) -> Iterator<U>): Iterator<U> {
     }
 }
 
-/**
- * Zip this iterator with [other] until either iterator is exhausted.
- */
+/** Zip this iterator with [other] until either iterator is exhausted. */
 fun <A, B> Iterator<A>.zip(other: Iterator<B>): Iterator<Pair<A, B>> {
     val self = this
     return object : Iterator<Pair<A, B>> {

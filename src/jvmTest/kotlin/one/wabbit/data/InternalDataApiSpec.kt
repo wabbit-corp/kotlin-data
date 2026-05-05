@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 @file:OptIn(InternalDataApi::class)
 
 package one.wabbit.data
@@ -6,15 +8,18 @@ import java.lang.reflect.Modifier
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class InternalDataApiSpec {
     @Test
     fun `core collection constructors are not public`() {
-        assertFalse(BankersQueue::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() })
+        assertFalse(
+            BankersQueue::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() }
+        )
         assertFalse(Chain::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() })
         assertFalse(Cord::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() })
-        assertFalse(ArrMap::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() })
+        assertFalse(
+            ArrMap::class.java.sourceVisibleConstructors().any { it.isPubliclyAccessible() }
+        )
     }
 
     @Test
@@ -55,6 +60,7 @@ class InternalDataApiSpec {
     private fun Class<*>.sourceVisibleConstructors(): List<java.lang.reflect.Constructor<*>> =
         declaredConstructors.filterNot { constructor ->
             constructor.isSynthetic ||
-                constructor.parameterTypes.lastOrNull()?.name == "kotlin.jvm.internal.DefaultConstructorMarker"
+                constructor.parameterTypes.lastOrNull()?.name ==
+                    "kotlin.jvm.internal.DefaultConstructorMarker"
         }
 }

@@ -19,7 +19,10 @@ class FloatingBufferSpec {
         val nan1 = Float.fromBits(0x7fc00000)
         val nan2 = Float.fromBits(0x7fc00001)
         assertEquals(FloatBuffer(floatArrayOf(nan1)), FloatBuffer(floatArrayOf(nan2)))
-        assertEquals(FloatBuffer(floatArrayOf(nan1)).hashCode(), FloatBuffer(floatArrayOf(nan2)).hashCode())
+        assertEquals(
+            FloatBuffer(floatArrayOf(nan1)).hashCode(),
+            FloatBuffer(floatArrayOf(nan2)).hashCode(),
+        )
 
         val withNaNs = FloatBuffer(floatArrayOf(nan1, -0.0f, 0.0f))
 
@@ -55,7 +58,10 @@ class FloatingBufferSpec {
         val nan1 = Double.fromBits(0x7ff8000000000000L)
         val nan2 = Double.fromBits(0x7ff8000000000001L)
         assertEquals(DoubleBuffer(doubleArrayOf(nan1)), DoubleBuffer(doubleArrayOf(nan2)))
-        assertEquals(DoubleBuffer(doubleArrayOf(nan1)).hashCode(), DoubleBuffer(doubleArrayOf(nan2)).hashCode())
+        assertEquals(
+            DoubleBuffer(doubleArrayOf(nan1)).hashCode(),
+            DoubleBuffer(doubleArrayOf(nan2)).hashCode(),
+        )
 
         val withNaNs = DoubleBuffer(doubleArrayOf(nan1, -0.0, 0.0))
 

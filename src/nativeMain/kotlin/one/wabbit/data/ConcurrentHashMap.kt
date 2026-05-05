@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 @file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
 
 package one.wabbit.data
@@ -6,7 +8,8 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicReference
 import platform.posix.sched_yield
 
-actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
+actual class ConcurrentHashMap<K : Any, V : Any>
+internal constructor(
     initialCapacity: Int,
     private val hooks: ConcurrentHashMapNativeHooks = ConcurrentHashMapNativeHooks(),
 ) {
@@ -29,28 +32,28 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
 
     actual fun put(key: K, value: V): V? {
         var insertedSize = -1
-        val previous =
-            withMutationPermit { table ->
-                val bucket = table.buckets[bucketIndex(table, key)]
-                while (true) {
-                    val snapshot = bucket.load()
-                    val existing = findEntry(snapshot, key)
-                    val updated = if (existing == null) {
+        val previous = withMutationPermit { table ->
+            val bucket = table.buckets[bucketIndex(table, key)]
+            while (true) {
+                val snapshot = bucket.load()
+                val existing = findEntry(snapshot, key)
+                val updated =
+                    if (existing == null) {
                         Entry(key, value, snapshot)
                     } else {
                         replaceEntry(snapshot, key, value)
                     }
-                    if (bucket.compareAndSet(snapshot, updated)) {
-                        hooks.afterBucketMutationBeforeSizeChange?.invoke()
-                        if (existing == null) {
-                            insertedSize = sizeRef.adjustAndGet(1)
-                            return@withMutationPermit null
-                        }
-                        return@withMutationPermit existing.value
+                if (bucket.compareAndSet(snapshot, updated)) {
+                    hooks.afterBucketMutationBeforeSizeChange?.invoke()
+                    if (existing == null) {
+                        insertedSize = sizeRef.adjustAndGet(1)
+                        return@withMutationPermit null
                     }
+                    return@withMutationPermit existing.value
                 }
-                error("unreachable")
             }
+            error("unreachable")
+        }
         if (insertedSize >= 0) {
             resizeIfNeeded(insertedSize)
         }
@@ -59,24 +62,23 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
 
     actual fun putIfAbsent(key: K, value: V): V? {
         var insertedSize = -1
-        val previous =
-            withMutationPermit { table ->
-                val bucket = table.buckets[bucketIndex(table, key)]
-                while (true) {
-                    val snapshot = bucket.load()
-                    val existing = findEntry(snapshot, key)
-                    if (existing != null) {
-                        return@withMutationPermit existing.value
-                    }
-                    val updated = Entry(key, value, snapshot)
-                    if (bucket.compareAndSet(snapshot, updated)) {
-                        hooks.afterBucketMutationBeforeSizeChange?.invoke()
-                        insertedSize = sizeRef.adjustAndGet(1)
-                        return@withMutationPermit null
-                    }
+        val previous = withMutationPermit { table ->
+            val bucket = table.buckets[bucketIndex(table, key)]
+            while (true) {
+                val snapshot = bucket.load()
+                val existing = findEntry(snapshot, key)
+                if (existing != null) {
+                    return@withMutationPermit existing.value
                 }
-                error("unreachable")
+                val updated = Entry(key, value, snapshot)
+                if (bucket.compareAndSet(snapshot, updated)) {
+                    hooks.afterBucketMutationBeforeSizeChange?.invoke()
+                    insertedSize = sizeRef.adjustAndGet(1)
+                    return@withMutationPermit null
+                }
             }
+            error("unreachable")
+        }
         if (insertedSize >= 0) {
             resizeIfNeeded(insertedSize)
         }
@@ -152,7 +154,8 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
     private fun findEntry(table: Table<K, V>, key: K): Entry<K, V>? =
         findEntry(table.buckets[bucketIndex(table, key)].load(), key)
 
-    private fun bucketIndex(table: Table<K, V>, key: K): Int = spreadHash(key.hashCode()) and table.bucketMask
+    private fun bucketIndex(table: Table<K, V>, key: K): Int =
+        spreadHash(key.hashCode()) and table.bucketMask
 
     private inline fun <T> withMutationPermit(block: (Table<K, V>) -> T): T {
         enterMutation()
@@ -228,11 +231,7 @@ actual class ConcurrentHashMap<K : Any, V : Any> internal constructor(
             buckets = Array(bucketCount) { AtomicReference<Entry<K, V>?>(null) },
         )
 
-    private data class Entry<K : Any, V : Any>(
-        val key: K,
-        val value: V,
-        val next: Entry<K, V>?,
-    )
+    private data class Entry<K : Any, V : Any>(val key: K, val value: V, val next: Entry<K, V>?)
 
     private data class Table<K : Any, V : Any>(
         val bucketCount: Int,

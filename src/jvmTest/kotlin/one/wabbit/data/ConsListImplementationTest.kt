@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 package one.wabbit.data
 
 import java.nio.file.Path
@@ -10,19 +12,28 @@ class ConsListImplementationTest {
     fun `cons list interop methods do not delegate through toList`() {
         val source =
             Path.of(
-                System.getProperty("user.dir"),
-                "src",
-                "commonMain",
-                "kotlin",
-                "one",
-                "wabbit",
-                "data",
-                "ConsList.kt",
-            ).readText()
+                    System.getProperty("user.dir"),
+                    "src",
+                    "commonMain",
+                    "kotlin",
+                    "one",
+                    "wabbit",
+                    "data",
+                    "ConsList.kt",
+                )
+                .readText()
 
-        assertFalse(methodBody(source, "override fun listIterator(): ListIterator<V>").contains("toList()"))
-        assertFalse(methodBody(source, "override fun listIterator(index: Int): ListIterator<V>").contains("toList()"))
-        assertFalse(methodBody(source, "override fun subList(fromIndex: Int, toIndex: Int): List<V>").contains("toList()"))
+        assertFalse(
+            methodBody(source, "override fun listIterator(): ListIterator<V>").contains("toList()")
+        )
+        assertFalse(
+            methodBody(source, "override fun listIterator(index: Int): ListIterator<V>")
+                .contains("toList()")
+        )
+        assertFalse(
+            methodBody(source, "override fun subList(fromIndex: Int, toIndex: Int): List<V>")
+                .contains("toList()")
+        )
     }
 
     private fun methodBody(source: String, signature: String): String {

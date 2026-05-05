@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
 import kotlin.math.max
@@ -27,8 +29,10 @@ import kotlinx.serialization.encoding.Encoder
  * Negative indexing is not applicable because this type does not expose indexed access.
  */
 @Serializable(with = Chain.TypeSerializer::class)
-class Chain<out A> private constructor(private val value: Any?, val length: Int, private val depth: Int) {
+class Chain<out A>
+private constructor(private val value: Any?, val length: Int, private val depth: Int) {
     private object Empty
+
     private object Finished
 
     private class Concat(val left: Any?, val right: Any?)
@@ -40,9 +44,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
     // Chain = (Empty | A | Wrap<A> | Concat, Int)
     // Concat = (Empty | A | Wrap<A> | Concat, A | Wrap<A> | Concat)
 
-    /**
-     * Concatenate this chain with [that] in O(1).
-     */
+    /** Concatenate this chain with [that] in O(1). */
     operator fun plus(that: Chain<@UnsafeVariance A>) =
         Chain<A>(
             Concat(this.value, that.value),
@@ -50,29 +52,15 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
             max(this.depth + 1, that.depth),
         )
 
-    /**
-     * Return a chain with [s] before this chain.
-     */
+    /** Return a chain with [s] before this chain. */
     fun prepend(s: Chain<@UnsafeVariance A>): Chain<A> =
-        Chain<A>(
-            Concat(s.value, this.value),
-            s.length + this.length,
-            max(s.depth + 1, this.depth),
-        )
+        Chain<A>(Concat(s.value, this.value), s.length + this.length, max(s.depth + 1, this.depth))
 
-    /**
-     * Return a chain with [s] after this chain.
-     */
+    /** Return a chain with [s] after this chain. */
     fun append(s: Chain<@UnsafeVariance A>): Chain<A> =
-        Chain<A>(
-            Concat(this.value, s.value),
-            this.length + s.length,
-            max(this.depth + 1, s.depth),
-        )
+        Chain<A>(Concat(this.value, s.value), this.length + s.length, max(this.depth + 1, s.depth))
 
-    /**
-     * Materialize this chain into a new array.
-     */
+    /** Materialize this chain into a new array. */
     fun toArray(): Array<@UnsafeVariance A> {
         val rights = arrayOfNulls<Any?>(this.depth)
         val out = arrayOfNulls<Any?>(this.length)
@@ -80,9 +68,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
         return out as Array<@UnsafeVariance A>
     }
 
-    /**
-     * Materialize this chain into a new list.
-     */
+    /** Materialize this chain into a new list. */
     fun toList(): List<A> {
         val rights = arrayOfNulls<Any?>(this.depth)
         val out = ArrayList<A>(length)
@@ -97,9 +83,7 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
 
     override fun toString(): String = toList().joinToString(prefix = "Chain(", postfix = ")")
 
-    /**
-     * Serializer that encodes chains as flattened lists.
-     */
+    /** Serializer that encodes chains as flattened lists. */
     class TypeSerializer<E>(val elementSerializer: KSerializer<E>) : KSerializer<Chain<E>> {
         private val listSerializer = ListSerializer(elementSerializer)
         override val descriptor: SerialDescriptor = listSerializer.descriptor
@@ -112,23 +96,15 @@ class Chain<out A> private constructor(private val value: Any?, val length: Int,
             Chain.wrapList(listSerializer.deserialize(decoder))
     }
 
-    /**
-     * Factories for [Chain].
-     */
+    /** Factories for [Chain]. */
     companion object {
-        /**
-         * Empty chain singleton.
-         */
+        /** Empty chain singleton. */
         val empty: Chain<Nothing> = Chain<Nothing>(Empty, 0, 1)
 
-        /**
-         * Create a chain containing one [value].
-         */
+        /** Create a chain containing one [value]. */
         fun <A> of(value: A): Chain<A> = Chain(value, 1, 1)
 
-        /**
-         * Create a chain from [value].
-         */
+        /** Create a chain from [value]. */
         fun <A> of(vararg value: A): Chain<A> = Chain(WrapArray(value), value.size, 1)
 
         /**

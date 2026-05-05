@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package one.wabbit.data
 
 import kotlinx.serialization.KSerializer
@@ -69,7 +71,8 @@ class IntDeque(initialCapacity: Int = 16) {
         destinationIndex: Int,
     ) {
         if (count == 0) return
-        val start = if (destinationIndex >= capacity) destinationIndex % capacity else destinationIndex
+        val start =
+            if (destinationIndex >= capacity) destinationIndex % capacity else destinationIndex
         val firstPart = minOf(count, capacity - start)
         source.copyInto(buffer, start, sourceStart, sourceStart + firstPart)
         val remaining = count - firstPart
@@ -131,9 +134,7 @@ class IntDeque(initialCapacity: Int = 16) {
         tail = usedSize
     }
 
-    /**
-     * Materialize this deque from front to back as a list.
-     */
+    /** Materialize this deque from front to back as a list. */
     fun toList(): List<Int> {
         val result = ArrayList<Int>(usedSize)
         for (i in 0 until usedSize) {
@@ -142,9 +143,7 @@ class IntDeque(initialCapacity: Int = 16) {
         return result
     }
 
-    /**
-     * Copy deque contents from front to back into a primitive array.
-     */
+    /** Copy deque contents from front to back into a primitive array. */
     fun toIntArray(): IntArray {
         val result = IntArray(usedSize)
         for (i in 0 until usedSize) {
@@ -153,19 +152,13 @@ class IntDeque(initialCapacity: Int = 16) {
         return result
     }
 
-    /**
-     * Return whether this deque has no elements.
-     */
+    /** Return whether this deque has no elements. */
     fun isEmpty(): Boolean = usedSize == 0
 
-    /**
-     * Return whether this deque has at least one element.
-     */
+    /** Return whether this deque has at least one element. */
     fun isNotEmpty(): Boolean = usedSize != 0
 
-    /**
-     * Remove all elements while retaining current capacity.
-     */
+    /** Remove all elements while retaining current capacity. */
     fun clear() {
         head = 0
         tail = 0
@@ -174,6 +167,7 @@ class IntDeque(initialCapacity: Int = 16) {
 
     /**
      * Return the front element.
+     *
      * @throws NoSuchElementException when this deque is empty.
      */
     fun peekFirst(): Int {
@@ -183,6 +177,7 @@ class IntDeque(initialCapacity: Int = 16) {
 
     /**
      * Return the back element.
+     *
      * @throws NoSuchElementException when this deque is empty.
      */
     fun peekLast(): Int {
@@ -310,14 +305,10 @@ class IntDeque(initialCapacity: Int = 16) {
         }
     }
 
-    /**
-     * Return an iterator from front to back.
-     */
+    /** Return an iterator from front to back. */
     operator fun iterator(): Iterator = Iterator(this)
 
-    /**
-     * Number of elements in this deque.
-     */
+    /** Number of elements in this deque. */
     val size: Int
         get() = usedSize
 
@@ -341,9 +332,7 @@ class IntDeque(initialCapacity: Int = 16) {
         return result
     }
 
-    /**
-     * Compatibility alias for [size].
-     */
+    /** Compatibility alias for [size]. */
     val length: Int
         get() = usedSize
 
@@ -362,28 +351,18 @@ class IntDeque(initialCapacity: Int = 16) {
         }
     }
 
-    /**
-     * Factories for primitive deques.
-     */
+    /** Factories for primitive deques. */
     companion object {
-        /**
-         * Return an empty deque.
-         */
+        /** Return an empty deque. */
         fun empty(): IntDeque = IntDeque(0)
 
-        /**
-         * Return a deque containing one [value].
-         */
+        /** Return a deque containing one [value]. */
         fun of(value: Int): IntDeque = IntDeque(intArrayOf(value))
 
-        /**
-         * Return a deque containing [values].
-         */
+        /** Return a deque containing [values]. */
         fun of(vararg values: Int): IntDeque = IntDeque(values)
     }
 }
 
-/**
- * Copy this primitive array into a new [IntDeque].
- */
+/** Copy this primitive array into a new [IntDeque]. */
 fun IntArray.toDeque(): IntDeque = IntDeque(this)
