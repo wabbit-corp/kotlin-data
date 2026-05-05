@@ -1,0 +1,5 @@
+# Repo-local check suppressions for generated assets and false-positive tokens.
+check:ignore E_DUPLICATE_FILE .banner.png
+check:ignore E_KMP_AMBIGUOUS_NATIVE_NAME src/hostNativeTest
+check:ignore E_STALE_TODO src/commonMain/kotlin/one/wabbit/data/DoubleBuffer.kt
+check:ignore E_STALE_TODO src/commonMain/kotlin/one/wabbit/data/DoubleDeque.kt
